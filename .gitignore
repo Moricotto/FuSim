@@ -1,5 +1,7 @@
 **/.vscode/*
 Software/data/*
+Src/IP/mu_mult/*
+!Src/IP/mu_mult/mu_mult.xci
 Vivado/*
 Images/*
 Resources/*
