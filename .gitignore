@@ -1,7 +1,7 @@
 **/.vscode/*
 Software/data/*
-Software/visualise/*
-!Software/visualise/Vis_SFML.cpp
+Software/visualiser/Vis_SFML/*
+!Software/visualiser/Vis_SFML/Vis_SFML.cpp
 Src/IP/mu_mult/*
 !Src/IP/mu_mult/mu_mult.xci
 Vivado/*
