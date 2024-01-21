@@ -1,6 +1,7 @@
-Software/.vscode/*
+**/.vscode/*
 Software/data/*
 Vivado/*
 Images/*
 Resources/*
 Backup/*
+pat.txt
