@@ -1,0 +1,45 @@
+gyroradii[N][M];
+prev_solution[N][M];
+ki = some constant for the ions;
+ke = some constant for the electrons;
+omega = 2/3;
+num_it = 5;
+
+
+//TODO: add multiple vperp delta functions
+
+for it in 0 ... num_it {
+    //iterate over the gridpoints
+    for y in 0 ... N - 1 {
+        for x in 0 ... M - 1 {
+            gyroradius = gyroradii[y][x];
+            sum = -ki/16 * (
+                2 * interpolate(y + gyroradius, x + gyroradius) +
+                2 * interpolate(y + gyroradius, x - gyroradius) +
+                2 * interpolate(y - gyroradius, x + gyroradius) +
+                2 * interpolate(y - gyroradius, x - gyroradius) +
+                1 * interpolate(y, x + 2 * gyroradius) +
+                1 * interpolate(y, x - 2 * gyroradius) +
+                1 * interpolate(y + 2 * gyroradius, x) +
+                1 * interpolate(y - 2 * gyroradius, x));
+            diag_element =  (ki * 3/4 + ke)
+            
+            //weighted jacobi
+            new_solution[y][x] = omega * ((charge[y][x] - sum)/diag_element) + (1 - omega) * prev_solution[y][x];
+        } 
+    }
+    prev_solution = new_solution;
+}
+
+func interpolate(y, x) {
+    ly = int(y);
+    lx = int(x);
+    dy = y - ly;
+    dx = x - lx;
+    return
+        (1 - dy) * (1 - dx) * prev_solution[y][x] +
+        (1 - dy) * (dx) * prev_solution[y][x + 1] +
+        (dy) * (1 - dx) * prev_solution[y + 1][x] +
+        (dy) * (dx) * prev_solution[y + 1][x + 1];  
+}
+
