@@ -1,0 +1,21 @@
+﻿  Vis_SFML.cpp
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(53,51): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(53,44): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(53,37): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(54,51): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(54,44): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(54,35): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(55,51): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(55,44): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(55,35): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(56,51): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(56,42): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(56,35): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(57,51): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(57,42): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(57,35): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(58,51): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(58,44): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(58,37): warning C4244: 'argument': conversion from 'float' to 'sf::Uint8', possible loss of data
+C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\Vis_SFML.cpp(109,36): warning C4244: 'argument': conversion from 'float' to 'int', possible loss of data
+  Vis_SFML.vcxproj -> C:\Users\Jonah\Documents\Projects\ScienceFair\Software\visualiser\Vis_SFML\x64\Debug\Vis_SFML.exe
