@@ -1,4 +1,6 @@
 **/.vscode/*
+**/*.exe
+**/*.o
 Software/data/*
 Software/visualiser/Vis_SFML/*
 !Software/visualiser/Vis_SFML/Vis_SFML.cpp
