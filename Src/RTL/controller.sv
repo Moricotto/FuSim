@@ -23,101 +23,72 @@ import defs::*;
 module controller (
     input logic clk,
     input logic rst,
-    input logic valid_fifo,
-    input logic calib_complete,
+    input logic ui_done,
     input logic scatter_done,
+    input logic pusher_done,
     input logic solve_done,
-    output logic rst_scatter,
-    output logic rst_solve,
-    output logic rst_push, 
+    input logic fifo_valid,
+    input logic last_step,
+    output logic fifo_ready,
+    output logic pusher_valid,
     output logic start_solve,
-    output logic ready_out,
-    output logic fifo_tlast,
-    output step_t step,
     output logic first
     );
 
     typedef enum {
-        CALIB,
+        UI,
+        WAIT_VALID,
+        SOLVE,
         PUSH_SCATTER,
-        RST_SOLVE,
-        SOLVER,
-        RST_PUSH_SCATTER
+        SCATTER
     } state_t;
 
     state_t state;
-    logic ready;
-    logic [$clog2(NUM_PARTICLES)-1:0] particle_count;
-
-    assign ready_out = ready;
-
+    
     always_ff @(posedge clk) begin
         if (rst) begin
-            state <= CALIB;
-            step <= SCATTER;
-            rst_scatter <= 1'b1;
-            rst_solve <= 1'b1;
-            rst_push <= 1'b1;
-            first <= 1'b1;
-            fifo_tlast <= 1'b0;
-            ready <= 1'b0;
-            particle_count <= '0;
+            state <= UI;
         end else begin
-            case (state) 
-                CALIB: begin
-                    rst_scatter <= 1'b1;
-                    rst_solve <= 1'b1;
-                    rst_push <= 1'b1;
-                    start_solve <= 1'b0;
-                    first <= 1'b1;
-                    if (calib_complete) begin
-                        rst_scatter <= 1'b0;
-                        rst_solve <= 1'b0;
-                        rst_push <= 1'b0;
-                        ready <= 1'b1;
+            case (state)
+                UI: begin
+                    if (ui_done) begin
+                        state <= WAIT_VALID;
+                        fifo_ready <= 1'b1;
+                        first <= 1'b1;
+                    end
+                end
+                WAIT_VALID: begin
+                    if (fifo_valid) begin
                         state <= PUSH_SCATTER;
-                        step <= SCATTER;
+                        pusher_valid <= 1'b1;
                     end
                 end
                 PUSH_SCATTER: begin
-                    if (valid_fifo & ready) begin
-                        particle_count <= particle_count + 1;
+                    if (pusher_done) begin
+                        if (last_step)
+                            state <= UI;
+                        else begin
+                            state <= SCATTER;
+                            first <= 1'b0;
+                            pusher_valid <= 1'b0;
+                            fifo_ready <= 1'b0;
+                        end
                     end
-                    if (particle_count == NUM_PARTICLES - 2) begin
-                        fifo_tlast <= 1'b1;
-                    end else if (particle_count == NUM_PARTICLES - 1) begin
-                        fifo_tlast <= 1'b0;
-                        ready <= 1'b0;
-                    end
+                end
+                SCATTER: begin
                     if (scatter_done) begin
-                        first <= 1'b0;
-                        rst_solve <= 1'b1;
-                        particle_count <= '0;
-                        state <= RST_SOLVE;
+                        state <= SOLVE;
+                        start_solve <= 1'b1;
                     end
                 end
-                RST_SOLVE: begin
-                    rst_solve <= 1'b0;
-                    start_solve <= 1'b1;
-                    step <= SOLVE;
-                    state <= SOLVER;
-                end
-                SOLVER: begin
-                    start_solve <= 1'b0;
+                SOLVE: begin
                     if (solve_done) begin
-                        rst_scatter <= 1'b1;
-                        rst_push <= 1'b1;
-                        state <= RST_PUSH_SCATTER;
+                        state <= WAIT_VALID;
+                        start_solve <= 1'b0;
+                        fifo_ready <= 1'b1;
                     end
-                end
-                RST_PUSH_SCATTER: begin
-                    rst_scatter <= 1'b0;
-                    rst_push <= 1'b0;
-                    ready <= 1'b1;
-                    step <= SCATTER;
-                    state <= PUSH_SCATTER;
                 end
             endcase
         end
-    end
+
 endmodule

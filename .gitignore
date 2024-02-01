@@ -11,3 +11,5 @@ Images/*
 Resources/*
 Backup/*
 pat.txt
+Notes/*
+!Notes/*.md
