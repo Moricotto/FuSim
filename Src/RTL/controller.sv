@@ -27,9 +27,7 @@ module controller (
     input logic scatter_done,
     input logic pusher_done,
     input logic solve_done,
-    input logic fifo_valid,
     input logic last_step,
-    output logic fifo_ready,
     output logic pusher_valid,
     output logic start_solve,
     output logic first
@@ -37,7 +35,6 @@ module controller (
 
     typedef enum {
         UI,
-        WAIT_VALID,
         SOLVE,
         PUSH_SCATTER,
         SCATTER
@@ -48,18 +45,15 @@ module controller (
     always_ff @(posedge clk) begin
         if (rst) begin
             state <= UI;
+            pusher_valid <= 1'b0;
+            start_solve <= 1'b0;
+            first <= 1'b1;
         end else begin
             case (state)
                 UI: begin
                     if (ui_done) begin
-                        state <= WAIT_VALID;
-                        fifo_ready <= 1'b1;
-                        first <= 1'b1;
-                    end
-                end
-                WAIT_VALID: begin
-                    if (fifo_valid) begin
                         state <= PUSH_SCATTER;
+                        first <= 1'b1;
                         pusher_valid <= 1'b1;
                     end
                 end
@@ -71,7 +65,6 @@ module controller (
                             state <= SCATTER;
                             first <= 1'b0;
                             pusher_valid <= 1'b0;
-                            fifo_ready <= 1'b0;
                         end
                     end
                 end
@@ -83,12 +76,11 @@ module controller (
                 end
                 SOLVE: begin
                     if (solve_done) begin
-                        state <= WAIT_VALID;
+                        state <= PUSH_SCATTER;
                         start_solve <= 1'b0;
-                        fifo_ready <= 1'b1;
                     end
                 end
             endcase
         end
-
+    end
 endmodule

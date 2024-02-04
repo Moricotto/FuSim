@@ -24,27 +24,28 @@ module interpolator #(parameter DWIDTH = 16, parameter STAGES = 3, parameter UWI
     input logic clk,
     input logic rst,
     input logic valid,
-    input logic zero,
-    input pos_t pos,
-    input logic [3:0] [DWIDTH-1:0] data_in,
-    input logic [UWIDTH-1:0] user_in,
-    output logic [GRID_ADDRWIDTH-1:0] raddr_out,
-    output logic valid_out,
-    output logic  [DWIDTH+PFRAC*2+1:0] interpolated_data_out,
+    input posvec_t pos,
+    input logic [UWIDTH-1:0] user_in, 
+    output logic  [DWIDTH+PFRAC*2-1:0] interpolated_data_out,
     output logic [UWIDTH-1:0] user_out
+    //bram communication
+    input logic [3:0] [DWIDTH-1:0] data_in,
+    output logic valid_out,
+    output addr_t [3:0] raddr_out
     );
 
     //signals
-    logic zero_ff [3:0];
-    dist_t dist_ff;
-    dist_t inv_dist_ff;
+    dist_t dist_ff [3:0];
+    dist_t inv_dist_ff [3:0];
     logic [3:0] [DWIDTH-1:0] data_ff;
     logic [3:0] [PFRAC*2-1:0] coeff;
-    logic [3:0] [PFRAC*2-1:0] coeff_ff;
+    logic [3:0] [PFRAC*2-1:0] coeff_ff [1:0];
+    logic [DWIDTH-1:0] ll [STAGES:0];
+    logic special [1+STAGES:0];
     logic [3:0] [DWIDTH+PFRAC*2-1:0] partial_interpolated_data;
     logic [3:0] [DWIDTH+PFRAC*2-1:0] partial_interpolated_data_ff;
-    logic [DWIDTH+PFRAC*2:0] lower_half_partial_ff;
-    logic [DWIDTH+PFRAC*2:0] upper_half_partial_ff;
+    logic [DWIDTH+PFRAC*2-1:0] lower_half_partial_ff;
+    logic [DWIDTH+PFRAC*2-1:0] upper_half_partial_ff;
     logic [UWIDTH-1:0] user_ff [6+STAGES:0]; 
 
     //valids
@@ -95,7 +96,7 @@ module interpolator #(parameter DWIDTH = 16, parameter STAGES = 3, parameter UWI
                 BWIDTH: begin
                     bmag_mult mult (
                         .CLK(clk),
-                        .A(coeff_ff[n]),
+                        .A(coeff_ff[1][n]),
                         .B(data_ff[n]),
                         .P(partial_interpolated_data[n])
                     );
@@ -103,7 +104,7 @@ module interpolator #(parameter DWIDTH = 16, parameter STAGES = 3, parameter UWI
                 PHIWIDTH: begin
                     phi_mult mult (
                         .CLK(clk),
-                        .A(coeff_ff[n]),
+                        .A(coeff_ff[1][n]),
                         .B(data_ff[n]),
                         .P(partial_interpolated_data[n])
                     );
@@ -124,11 +125,8 @@ module interpolator #(parameter DWIDTH = 16, parameter STAGES = 3, parameter UWI
             end
             lower_half_partial_ff <= '0;
             upper_half_partial_ff <= '0;
-            for (int i = 0; i < 7+STAGES; i++) begin
+            for (int i = 0; i < 8+STAGES; i++) begin
                 user_ff[i] <= '0;
-            end
-            for (int i = 0; i <= 3; i++) begin
-                zero_ff[i] <= 1'b0;
             end
             raddr_out <= '0;
             interpolated_data_out <= '0;
@@ -147,36 +145,37 @@ module interpolator #(parameter DWIDTH = 16, parameter STAGES = 3, parameter UWI
             valid_out <= 1'b0;
         end else begin
             if (valid) begin
-                dist_ff <= {pos.y[PFRAC-1:0], pos.x[PFRAC-1:0]};
-                inv_dist_ff <={(12'b1 << PFRAC) - pos.y[PFRAC-1:0], (12'b1 << PFRAC) - pos.x[PFRAC-1:0]};
-                raddr_out <= {pos.y[PWIDTH-1:PFRAC], pos.x[PWIDTH-1:PFRAC]};
+                dist_ff[0] <= {pos.y.frac, pos.x.frac};
+                inv_dist_ff[0] <={12'hfff - pos.y.frac + 1, 12'hfff - pos.x.frac + 1}; //note that if this is zero, dist must also be zero
+                for (int i = 0; i < 4; i++) begin
+                    raddr_out[i] <= {pos.y.whole + i[1], pos.x.whole + i[0]};
+                end
                 user_ff[0] <= user_in;
-                zero_ff[0] <= zero;
                 valid_dist <= 1'b1;
             end else begin
                 valid_dist <= 1'b0;
             end
 
-            //wait three cycles for the dist to be calculated and for data to be read
+            //wait three cycles for the dist to be calculated and four for the data to be read
             if (valid_dist) begin
+                dist_ff[1] <= dist_ff[0];
                 user_ff[1] <= user_ff[0];
-                zero_ff[1] <= zero_ff[0];
                 valid_mult0 <= 1'b1;
             end else begin
                 valid_mult0 <= 1'b0;
             end
 
             if (valid_mult0) begin
+                dist_ff[2] <= dist_ff[1];
                 user_ff[2] <= user_ff[1];
-                zero_ff[2] <= zero_ff[1];
                 valid_mult1 <= 1'b1;
             end else begin
                 valid_mult1 <= 1'b0;
             end
 
             if (valid_mult1) begin
+                dist_ff[3] <= dist_ff[2];
                 user_ff[3] <= user_ff[2];
-                zero_ff[3] <= zero_ff[2];
                 valid_mult2 <= 1'b1;
             end else begin
                 valid_mult2 <= 1'b0;
@@ -184,18 +183,46 @@ module interpolator #(parameter DWIDTH = 16, parameter STAGES = 3, parameter UWI
 
 
             if (valid_mult2) begin
-                for (int i = 0; i < 4; i++) begin
-                    data_ff[i] <= zero_ff[3] ? '0 : data_in[i];
-                    coeff_ff[i] <= coeff[i];
+                special[0] <= dist_ff[3].y_frac == '0 && dist_ff[3].x_frac == '0;
+                if (dist_ff[3].y_frac == '0) begin
+                    coeff[0] <= inv_dist_ff[3].x_frac << 12;
+                    coeff[1] <= dist_ff[3].x_frac << 12;
+                    coeff[2] <= '0;
+                    coeff[3] <= '0;
+                end else if (dist_ff[3].x_frac == '0) begin
+                    coeff[0] <= inv_dist_ff[3].y_frac << 12;
+                    coeff[1] <= '0;
+                    coeff[2] <= dist_ff[3].y_frac << 12;
+                    coeff[3] <= '0;
+                end else begin
+                    for (int i = 0; i < 4; i++) begin
+                        //if coeff is 0, then dist_ff must be zero
+                        coeff_ff[0][i] <= coeff[i];
+                    end
                 end
                 user_ff[4] <= user_ff[3];
                 valid_coeff <= 1'b1;
             end else begin
                 valid_coeff <= 1'b0;
             end
-            
+
             if (valid_coeff) begin
+                special[1] <= special[0];
+                for (int i = 0; i < 4; i++) begin
+                    data_ff[i] <= data_in[i];
+                    coeff_ff[1][i] <= coeff_ff[0][i];
+                end
                 user_ff[5] <= user_ff[4];
+                valid_data <= 1'b1;
+            end else begin
+                valid_data <= 1'b0;
+            end
+            
+            //begin the interpolation
+            if (valid_data) begin
+                ll[0] <= data_ff[0];
+                special[2] <= special[1];
+                user_ff[6] <= user_ff[5];
                 valid_interpol[0] <= 1'b1;
             end else begin
                 valid_interpol[0] <= 1'b0;
@@ -204,7 +231,9 @@ module interpolator #(parameter DWIDTH = 16, parameter STAGES = 3, parameter UWI
             //wait STAGES cycles for the multiplication to be performed
             for (int i = 1; i < STAGES; i++) begin
                 if (valid_interpol[i-1]) begin
-                    user_ff[5+i] <= user_ff[4+i];
+                    ll[1+i] <= ll[i];
+                    special[2+i] <= special[1+i];
+                    user_ff[6+i] <= user_ff[5+i];
                     valid_interpol[i] <= 1'b1;
                 end else begin
                     valid_interpol[i] <= 1'b0;
@@ -213,9 +242,9 @@ module interpolator #(parameter DWIDTH = 16, parameter STAGES = 3, parameter UWI
             
             if (valid_interpol[STAGES-1]) begin
                 for (int i = 0; i < 4; i++) begin
-                    partial_interpolated_data_ff[i] <= partial_interpolated_data[i];
+                    partial_interpolated_data_ff[i] <= special[1+STAGES] ? ((i == 0) ? ll[STAGES] << 24 ? '0) : partial_interpolated_data[i];
                 end
-                user_ff[5+STAGES] <= user_ff[4+STAGES];
+                user_ff[6+STAGES] <= user_ff[5+STAGES];
                 valid_partial <= 1'b1;
             end else begin
                 valid_partial <= 1'b0;
@@ -224,7 +253,7 @@ module interpolator #(parameter DWIDTH = 16, parameter STAGES = 3, parameter UWI
             if (valid_partial) begin
                 lower_half_partial_ff <= partial_interpolated_data_ff[0] + partial_interpolated_data_ff[1];
                 upper_half_partial_ff <= partial_interpolated_data_ff[2] + partial_interpolated_data_ff[3];
-                user_ff[6+STAGES] <= user_ff[5+STAGES];
+                user_ff[7+STAGES] <= user_ff[6+STAGES];
                 valid_halfpartial <= 1'b1;
             end else begin
                 valid_halfpartial <= 1'b0;
@@ -232,7 +261,7 @@ module interpolator #(parameter DWIDTH = 16, parameter STAGES = 3, parameter UWI
 
             if (valid_halfpartial) begin
                 interpolated_data_out <= lower_half_partial_ff + upper_half_partial_ff;
-                user_out <= user_ff[6+STAGES];
+                user_out <= user_ff[7+STAGES];
                 valid_out <= 1'b1;
             end else begin
                 valid_out <= 1'b0;

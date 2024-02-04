@@ -1,7 +1,7 @@
 A list of bugs detected in the software implementation that need to be fixed in the Verilog implementation as well
 
 1. If the fractional part of a position is 0, getting the inverse of the fractional part for a scatter or gather operation overflows into the non-existent first integer bit.
-This should instead be special cased to select the correct values directly instead of performing the multiplication
+This should instead be special cased to select the correct values directly instead of performing the multiplication - done
 
 2. When adding or subtracting the gyroradius to get the gyropoints for the scatterer or pusher and the interpolation points for the solver, points near the boundaries of the grid 
 overflow or underflow. This should be special cased so that instead the boundary condition, be it Von Neumann or Dirichlet, is applied.
