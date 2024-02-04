@@ -72,8 +72,8 @@ public:
         T v11 = (*this)(y_int + 1, x_int + 1);
 
         if (y_frac == Dist{0.f} && x_frac == Dist{0.f}) return static_cast<ret_t>(v00);
-        else if (y_frac == Dist{0.f}) return static_cast<ret_t>(static_cast<Weight>(inv_x_frac) *  (*this)(y_int, x_int) + static_cast<Weight>(x_frac) * v01);
-        else if (x_frac == Dist{0.f}) return static_cast<ret_t>(static_cast<Weight>(inv_y_frac) * (*this)(y_int, x_int) + static_cast<Weight>(y_frac) * v10);
+        else if (y_frac == Dist{0.f}) return static_cast<ret_t>(static_cast<Weight>(inv_x_frac) *  v00 + static_cast<Weight>(x_frac) * v01);
+        else if (x_frac == Dist{0.f}) return static_cast<ret_t>(static_cast<Weight>(inv_y_frac) * v00 + static_cast<Weight>(y_frac) * v10);
         else {
 
             Weight w00 = inv_y_frac * inv_x_frac;
