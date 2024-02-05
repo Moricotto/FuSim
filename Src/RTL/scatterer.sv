@@ -33,6 +33,7 @@ module scatterer (
     output charge_t [3:0] charge_out [1:0]
     );
 
+    logic rst_ff;
     //signals for scatter step
     posvec_t pos;
     addr_t [3:0] grid_addr;
@@ -168,7 +169,8 @@ module scatterer (
     endgenerate;
 
     always_ff @(posedge clk) begin
-        if (rst) begin
+        rst_ff <= rst;
+        if (rst_ff) begin
             for (int i = 0; i < 4; i++) begin
                 gyropoints_y[i] <= '0;
                 gyropoints_x[i] <= '0;
