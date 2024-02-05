@@ -26,37 +26,36 @@ module accumulator (
     input logic clk,
     input logic rst,
     input logic valid_in,
-    input logic [PWIDTH-1:0] gyropoint_y, 
-    input logic [PWIDTH-1:0] gyropoint_x,
-    input logic [3:0] [CWIDTH-1:0] charge_in,
-    input logic [3:0] [GRID_ADDRWIDTH-1:0] uin,
-    output logic [GRID_ADDRWIDTH-1:0] waddr_out,
-    output logic [3:0] [CWIDTH-1:0] charge_out,
-    output logic [GRID_ADDRWIDTH-1:0] raddr_out,
-    output logic [3:0] [GRID_ADDRWIDTH-1:0] uout
+    input posvec_t gyropoint,
+    input charge_t [3:0] charge_in,
+    input addr_t [3:0] swapped_addr_in,
+    output addr_t [3:0] raddr_out, //address to read old charge from 
+    output addr_t [3:0] waddr_out,
+    output charge_t [3:0] charge_out
     );
     
     //flip-flops & corresponding valids
-    dist_t dist_ff;
-    dist_t inv_dist_ff;
+    dist_t dist_ff [3:0];
+    dist_t inv_dist_ff [3:0];
     logic valid_raddr;
     logic valid_mult0;
     logic valid_mult1;
     logic valid_mult2;
-    logic [3:0] [PFRAC*2-1:0] charge_coeff;
-    logic [3:0] [PFRAC*2-1:0] charge_coeff_ff;
-    logic [3:0] [CWIDTH-1:0] stored_charge_ff;
+    coeff_t [3:0] charge_coeff;
+    coeff_t [3:0] charge_coeff_ff;
+    charge_t [3:0] stored_charge_ff;
     logic valid_stored_charge;
     logic [3:0] [2:0] addend_sel;
-    logic [3:0] [CWIDTH-1:0] new_charge_ff;
+    charge_t [3:0] new_charge_ff;
     logic valid_new_charge;
-    logic [3:0] [CWIDTH-1:0] post_charge_ff;
+    charge_t [3:0] post_charge_ff;
     logic valid_post_charge;
-    logic [3:0] [CWIDTH-1:0] post_post_charge_ff;
+    charge_t [3:0] post_post_charge_ff;
     logic valid_post_post_charge;
-    logic [3:0] [CWIDTH-1:0] post_post_post_charge_ff;
-    logic [3:0] [GRID_ADDRWIDTH-1:0] addr [4:0];
-    logic [GRID_ADDRWIDTH-1:0] waddr [5:0];
+    charge_t [3:0] post_post_post_charge_ff;
+    logic valid_post_post_post_charge;
+    charge_t [3:0] post_post_post_post_charge_ff;
+    addr_t [3:0] addr [4:0];
 
     dist_mult mult00 (
         .CLK(clk),
@@ -86,9 +85,8 @@ module accumulator (
         .P(charge_coeff[3])
     );
 
-    assign raddr_out = addr[0][0];
-    assign waddr_out = waddr[5];
-    assign uout = addr[0];
+    assign raddr_out = addr[0];
+    assign waddr_out = addr[1];
     assign charge_out = new_charge_ff;
     
 
@@ -101,6 +99,7 @@ module accumulator (
                 post_charge_ff[i] <= '0;
                 post_post_charge_ff[i] <= '0;
                 post_post_post_charge_ff[i] <= '0;
+                post_post_post_post_charge_ff[i] <= '0;
             end
             dist_ff <= '0;
             inv_dist_ff <= '0;
@@ -110,7 +109,6 @@ module accumulator (
                         addr[i][j] <= '0;
                     end
                 end
-                waddr[i] <= '0;
             end
             valid_raddr <= 1'b0;
             valid_mult0 <= 1'b0;
@@ -120,57 +118,76 @@ module accumulator (
             valid_new_charge <= 1'b0;
             valid_post_charge <= 1'b0;
             valid_post_post_charge <= 1'b0;
-            
+            valid_post_post_post_charge <= 1'b0;
         end else begin
             //stage 1
             if (valid_in) begin
-                dist_ff <= {gyropoint_y[PFRAC-1:0], gyropoint_x[PFRAC-1:0]};
-                inv_dist_ff <= {(12'b1 << PFRAC) - gyropoint_y[PFRAC-1:0], (12'b1 << PFRAC) - gyropoint_x[PFRAC-1:0]};
+                dist_ff[0] <= {gyropoint.y.frac, gyropoint.x.frac};
+                inv_dist_ff[0] <= {12'hfff - gyropoint.y.frac + 1, 12'hfff - gyropoint.x.frac + 1};
                 for (int i = 0; i < 4; i++) begin
-                    addr[0][i] <= {gyropoint_y[PWIDTH-1:PFRAC] + i[1], gyropoint_x[PWIDTH-1:PFRAC] + i[0]};
+                    addr[0][i] <= {gyropoint.y.whole + i[1], gyropoint.x.whole + i[0]};
                 end
-                waddr[0] <= {gyropoint_y[PWIDTH-1:PFRAC], gyropoint_x[PWIDTH-1:PFRAC]};
                 valid_raddr <= 1;
             end else begin
                 valid_raddr <= 0;
             end
 
-            //wait three clocks for the read and the multiplies
+            //wait three clocks for the multiply and four for the read
             if (valid_raddr) begin
+                dist_ff[1] <= dist_ff[0];
+                inv_dist_ff[1] <= inv_dist_ff[0];
                 valid_mult0 <= 1'b1;
-                waddr[1] <= waddr[0];
             end else begin
                 valid_mult0 <= 1'b0;
             end
 
             if (valid_mult0) begin
+                dist_ff[2] <= dist_ff[1];
                 valid_mult1 <= 1'b1;
-                waddr[2] <= waddr[1];
             end else begin
                 valid_mult1 <= 1'b0;
             end
 
             if (valid_mult1) begin
+                dist_ff[3] <= dist_ff[2];
                 valid_mult2 <= 1'b1;
-                waddr[3] <= waddr[2];
             end else begin
                 valid_mult2 <= 1'b0;
             end
-
             if (valid_mult2) begin
-                for (int i = 0; i < 4; i++) begin
-                    //divide by 4 because each gyropoint carries only a quarter of the particle's charge
-                    charge_coeff_ff[i] <= charge_coeff[i] >> 2;
-                    stored_charge_ff[i] <= charge_in[i];
-                    addr[1][i] <= uin[i];
-                    addend_sel[i] <= 
-                        (addr[1][i] == uin[i]) ? 3'b00 :
-                        (addr[2][i] == uin[i]) ? 3'b01 :
-                        (addr[3][i] == uin[i]) ? 3'b10 :
-                        (addr[4][i] == uin[i]) ? 3'b11 : 3'b100;
-
+                if (dist_ff[3].y_frac == '0 && dist_ff[3].x_frac == '0) begin
+                    charge_coeff[0] <= 24'h400000
+                end else if (dist_ff[3].y_frac == '0) begin
+                    charge_coeff[0] <= inv_dist_ff[3].x_frac << 10;
+                    charge_coeff[1] <= dist_ff[3].x_frac << 10;
+                    charge_coeff[2] <= '0;
+                    charge_coeff[3] <= '0;
+                end else if (dist_ff[3].x_frac == '0) begin
+                    charge_coeff[0] <= inv_dist_ff[3].y_frac << 10;
+                    charge_coeff[1] <= '0;
+                    charge_coeff[2] <= dist_ff[3].y_frac << 10;
+                    charge_coeff[3] <= '0;
+                end else begin
+                    for (int i = 0; i < 4; i++) begin
+                        charge_coeff_ff[i] <= charge_coeff[i];
+                    end
                 end
-                waddr[4] <= waddr[3];
+                valid_coeffs <= 1'b1;
+            end else begin
+                valid_coeffs <= 1'b0;
+            end
+            
+            if (valid_coeffs) begin
+                stored_charge_ff[i] <= charge_in[i];
+                addr[0][i] <= swapped_addr_in[i];
+                charge_coeff_ff[1][i] <= charge_coeff_ff[0][i];
+                addend_sel[i] <= 
+                    (addr[0][i] == swapped_addr_in[i]) ? 3'b000 :
+                    (addr[1][i] == swapped_addr_in[i]) ? 3'b001 :
+                    (addr[2][i] == swapped_addr_in[i]) ? 3'b010 :
+                    (addr[3][i] == swapped_addr_in[i]) ? 3'b011 : 
+                    (addr[4][i] == swapped_addr_in[i]) ? 3'b100 : 3'b101;
+                end
                 valid_stored_charge <= 1'b1;
             end else begin
                 valid_stored_charge <= 1'b0;
@@ -178,19 +195,19 @@ module accumulator (
 
             if (valid_stored_charge) begin
                 for (int i = 0; i < 4; i++) begin
-                    if (addend_sel[i][2]) begin
+                    if (addend_sel[i][2] && addend_sel[i][0]) begin
                         new_charge_ff[i] <= stored_charge_ff[i] + charge_coeff_ff[i];
                     end else begin
-                        unique case (addend_sel[1:0])
-                            2'b00: new_charge_ff[i] <= new_charge_ff[i] + charge_coeff_ff[i];
-                            2'b01: new_charge_ff[i] <= post_charge_ff[i] + charge_coeff_ff[i];
-                            2'b10: new_charge_ff[i] <= post_post_charge_ff[i] + charge_coeff_ff[i];
-                            2'b11: new_charge_ff[i] <= post_post_post_charge_ff[i] + charge_coeff_ff[i];
+                        unique case (addend_sel)
+                            3'b000: new_charge_ff[i] <= new_charge_ff[i] + charge_coeff_ff[i];
+                            3'b001: new_charge_ff[i] <= post_charge_ff[i] + charge_coeff_ff[i];
+                            3'b010: new_charge_ff[i] <= post_post_charge_ff[i] + charge_coeff_ff[i];
+                            3'b011: new_charge_ff[i] <= post_post_post_charge_ff[i] + charge_coeff_ff[i];
+                            3'b100: new_charge_ff[i] <= post_post_post_post_charge_ff[i] + charge_coeff_ff[i];
                         endcase
                     end
-                    addr[2][i] <= addr[1][i];
+                    addr[1][i] <= addr[0][i];
                 end
-                waddr[5] <= waddr[4];
                 valid_new_charge <= 1'b1;
             end else begin
                 valid_new_charge <= 1'b0;
@@ -199,7 +216,7 @@ module accumulator (
             if (valid_new_charge) begin
                 for (int i = 0; i < 4; i++) begin
                     post_charge_ff[i] <= new_charge_ff[i];
-                    addr[3][i] <= addr[2][i];
+                    addr[2][i] <= addr[1][i];
                 end
                 valid_post_charge <= 1'b1;
             end else begin
@@ -209,7 +226,7 @@ module accumulator (
             if (valid_post_charge) begin
                 for (int i = 0; i < 4; i++) begin
                     post_post_charge_ff[i] <= post_charge_ff[i];
-                    addr[4][i] <= addr[3][i];
+                    addr[3][i] <= addr[2][i];
                 end
                 valid_post_post_charge <= 1'b1;
             end else begin
@@ -219,8 +236,18 @@ module accumulator (
             if (valid_post_post_charge) begin
                 for (int i = 0; i < 4; i++) begin
                     post_post_post_charge_ff[i] <= post_post_charge_ff[i];
+                    addr[4][i] <= addr[3][i];
                 end
+                valid_post_post_post_charge <= 1'b1;
+            end else begin
+                valid_post_post_post_charge <= 1'b0;
             end
+
+            if (valid_post_post_post_charge) begin
+                post_post_post_post_charge_ff[i] <= post_post_post_charge_ff[i];
+            end
+
+
         end
     end
 endmodule

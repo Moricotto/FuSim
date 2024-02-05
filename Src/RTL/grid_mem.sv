@@ -21,28 +21,26 @@
 
 import defs::*;
 
-module grid_mem
-    #(parameter WIDTH = 36, parameter UWIDTH = 0, parameter NO_RST = 0) (
+module grid_mem #(parameter WIDTH = 36, parameter NO_RST = 0) (
     input logic clk,
     input logic rst,
     input logic swap_rout,
     input logic [3:0] wea,
     input logic [3:0] web,
-    input logic [3:0] [GRID_ADDRWIDTH-1:0] addra,
-    input logic [3:0] [GRID_ADDRWIDTH-1:0] addrb,
+    input addr_t [3:0] addra,
+    input addr_t [3:0] addrb,
     input logic [3:0] [WIDTH-1:0] dina,
     input logic [3:0] [WIDTH-1:0] dinb,
-    input logic [3:0] [UWIDTH-1:0] uina,
-    input logic [3:0] [UWIDTH-1:0] uinb,
     output logic [3:0] [WIDTH-1:0] douta,
     output logic [3:0] [WIDTH-1:0] doutb,
-    output logic [3:0] [UWIDTH-1:0] uouta,
-    output logic [3:0] [UWIDTH-1:0] uoutb
+    output addr_t [3:0] swapped_addra,
+    output addr_t [3:0] swapped_addrb
     );
 
     //corresponds to PHYSICAL brams, that is, after all remappings have been applied
     logic [3:0] [NUM_CELLS/4-1:0] reset_bank;
 
+    //signals
     logic [3:0] [GRID_ADDRWIDTH-3:0] true_addra;
     logic [3:0] [GRID_ADDRWIDTH-3:0] true_addrb;
     logic [3:0] [1:0] sela;
@@ -53,12 +51,10 @@ module grid_mem
     logic [3:0] do_resetb [1:0];
     logic [3:0] [WIDTH-1:0] swapped_dina;
     logic [3:0] [WIDTH-1:0] swapped_dinb;
-    logic [3:0] [UWIDTH-1:0] swapped_uina;
-    logic [3:0] [UWIDTH-1:0] swapped_uinb;
     logic [3:0] wea_ff;
     logic [3:0] web_ff;
-    logic [3:0] [UWIDTH-1:0] swapped_uina_ff [1:0];
-    logic [3:0] [UWIDTH-1:0] swapped_uinb_ff [1:0];
+    addr_t [3:0] swapped_addra_ff [2:0];
+    addr_t [3:0] swapped_addrb_ff [2:0];
     logic [3:0] [WIDTH-1:0] swapped_douta_ff;
     logic [3:0] [WIDTH-1:0] swapped_doutb_ff;
     logic [3:0] [WIDTH-1:0] swapped_douta;
@@ -156,9 +152,11 @@ module grid_mem
             for (int i = 0; i < 4; i++) begin
                 //stage 1
                 true_addra[sela[i]] <= getTrueAddr(addra[i]); //{addra[GRID_ADDRWIDTH-:PINT+1] + i[1], addra[PINT-1:1] + i[0]};
+                swapped_addra_ff[0][sela[i]] <= addra[i];
                 swapped_dina[sela[i]] <= dina[i];
                 wea_ff[sela[i]] <= 1'b1;
                 true_addrb[selb[i]] <= getTrueAddr(addrb + i[0] + (i[1] << PINT));
+                swapped_addrb_ff[0][selb[i]] <= addrb[i];
                 swapped_dinb[selb[i]] <= dinb[i];
                 web_ff[selb[i]] <= 1'b1;
                 swapped_uina[sela[i]] <= uina[i];
@@ -182,8 +180,8 @@ module grid_mem
                     do_resetb[0][i] <= reset_bank[i][true_addrb[i]];
                 end
 
-                swapped_uina_ff[0][i] <= swapped_uina[i];
-                swapped_uinb_ff[0][i] <= swapped_uinb[i];
+                swapped_addra_ff[1][i] <= swapped_addra_ff[0][i];
+                swapped_addrb_ff[1][i] <= swapped_addrb_ff[0][i];
                 sela_ff[1][i] <= sela_ff[0][i];
                 selb_ff[1][i] <= selb_ff[0][i];
 
@@ -193,8 +191,7 @@ module grid_mem
                 swapped_doutb_ff[i] <= swapped_doutb[i];
                 sela_ff[2][i] <= sela_ff[1][i];
                 selb_ff[2][i] <= selb_ff[1][i];
-                swapped_uina_ff[1][i] <= swapped_uina_ff[0][i];
-                swapped_uinb_ff[1][i] <= swapped_uinb_ff[0][i];
+                swapped_addra_ff[2][i] <= swapped_addra_ff[1][i];
                 do_reseta[1][i] <= do_reseta[0][i];
                 do_resetb[1][i] <= do_resetb[0][i];
 
@@ -208,8 +205,8 @@ module grid_mem
                     doutb[i] <= do_resetb[i] ? '0 : swapped_doutb_ff[i];
                 end
 
-                uouta[i] <= swapped_uina_ff[1][sela_ff[2][i]];
-                uoutb[i] <= swapped_uinb_ff[1][selb_ff[2][i]];
+                swapped_addra[i] <= swapped_addra_ff[2][i];
+                swapped_addrb[i] <= swapped_addrb_ff[2][i];
 
             end
         end

@@ -1,10 +1,10 @@
 A list of bugs detected in the software implementation that need to be fixed in the Verilog implementation as well
 
 1. If the fractional part of a position is 0, getting the inverse of the fractional part for a scatter or gather operation overflows into the non-existent first integer bit.
-This should instead be special cased to select the correct values directly instead of performing the multiplication - done
+This should instead be special cased to select the correct values directly instead of performing the multiplication - implemented
 
 2. When adding or subtracting the gyroradius to get the gyropoints for the scatterer or pusher and the interpolation points for the solver, points near the boundaries of the grid 
-overflow or underflow. This should be special cased so that instead the boundary condition, be it Von Neumann or Dirichlet, is applied.
+overflow or underflow. This should be special cased so that instead the boundary condition, be it Von Neumann, Dirichlet, or in this case periodic, is applied.
 
 3. In the solver, the 8 interpolation points are not being weighted correctly when summed together. The four-point interpolation points should be divided by 8 and the others by 16. These should then
 all be multiplied by ki (which is currently not being done). 
@@ -14,6 +14,6 @@ This is contrary to the Jacobi method and this weight should instead be added to
 
 5. Bugs (?) related to the constants used by the Jacobi solver - exact nature unclear, careful matching to the software implementation will be necessary
 
-6. Additional integer bits are unnecessary (although, of course, not harmful) when performing interpolations, as all the weights by definition sum to one
+6. Additional integer bits are unnecessary (although, of course, not harmful) when performing interpolations, as all the weights by definition sum to one - implemented
 
 7. It seems that some of the precision choices and ip parameters chosen for the calculation of mu and the gradb drift are nonsensical and irrelevant
