@@ -26,11 +26,11 @@ module interpolator #(parameter DWIDTH = 16, parameter STAGES = 3, parameter UWI
     input logic valid,
     input posvec_t pos,
     input logic [UWIDTH-1:0] user_in, 
+    output logic valid_out,
     output logic  [DWIDTH+PFRAC*2-1:0] interpolated_data_out,
     output logic [UWIDTH-1:0] user_out
     //bram communication
     input logic [3:0] [DWIDTH-1:0] data_in,
-    output logic valid_out,
     output addr_t [3:0] raddr_out
     );
 

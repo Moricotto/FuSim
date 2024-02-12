@@ -231,6 +231,7 @@ module scatterer (
                 if (valid_gyroradius) begin
                     for (int i = 0; i < 4; i++) begin
                         //note that this can wrap, and this behaviour is desired to enforce periodic boundary condition
+                        //this is why the y and x components of the gyropoint are treated separately
                         gyropoints_y[i] <= gyrocenter_ff.y + (i[1] ? (i[0] ? gyroradius_ff : -gyroradius_ff) : 1'b0);
                         gyropoints_x[i] <= gyrocenter_ff.x + (i[1] ? 1'b0 : (i[0] ? gyroradius_ff : -gyroradius_ff));
                     end

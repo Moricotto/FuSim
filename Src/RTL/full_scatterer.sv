@@ -19,14 +19,13 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-//TODO: fix charge requisition
 module full_scatterer(
     input logic clk,
     input logic rst,
     input logic valid_scatter,
     input particle_t particle_in [1:0],
     input logic valid_req,
-    input addr_t grid_addr_in [1:0],
+    input addr_t [3:0] grid_addr_in [1:0],
     output charge_t [3:0] charge_out [1:0]
     );
     
