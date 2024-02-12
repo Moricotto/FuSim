@@ -41,14 +41,14 @@ SGrid<Phi> solve(const SGrid<Phi>& phi_in, const std::array<UGrid<Pos>, NUM_VPER
                 float matrix_prod = static_cast<float>(true_phi) + static_cast<float>(diag_const) * static_cast<float>(phi(y, x));
                 residual += static_cast<float>(rho(y, x)) - matrix_prod;
                 //calculate the difference between rho and A(phi)
-                Signed<Charge::integer + 1, Phi::fraction> diff = static_cast<Signed<Charge::integer, Phi::fraction>>(rho(y, x)) - true_phi;
-                Signed<(Charge::integer + 1) + 4, Phi::fraction + 20> new_phi =  diff * inv_diag_const; 
+                Signed<Charge::integer, Phi::fraction> diff = static_cast<Signed<Charge::integer, Phi::fraction>>(static_cast<Signed<Charge::integer, Phi::fraction>>(rho(y, x)) - true_phi);
+                Signed<(Charge::integer) + 4, Phi::fraction + 20> new_phi =  diff * inv_diag_const; 
                 //if (y % 8 == 0 && x % 8 == 0) std::cout << "rho = " << (float)rho(y, x) << ", phi = "  << (float)phi(y, x) << ", A(phi) = " << matrix_prod << " new_phi = "  <<(float)static_cast<Phi>(new_phi) << std::endl;
                 //std::cout << "it = " << it << ": diff = " << float(Phi{new_phi} - phi(y, x)) << std::endl;
                 buffers[(it + 1) % 2](y, x) = static_cast<Phi>(new_phi);
             }
         }
-        //std::cout << residual  * residual << std::endl;
+        //std::cout << "it = " << it << ": " << residual  * residual << std::endl;
     }
     //std::cout << "==========" << std::endl;
 

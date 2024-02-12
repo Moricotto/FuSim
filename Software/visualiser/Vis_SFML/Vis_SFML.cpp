@@ -21,7 +21,7 @@ constexpr int VIEW_HEIGHT = SQ_HEIGHT * GRIDY;
 
 constexpr int NUM_VIEWS = 2;
 constexpr int NUM_MOVIES = 2;
-constexpr size_t MOVIE_LENGTH = 1024;
+constexpr size_t MOVIE_LENGTH = 20;
 constexpr size_t TIME_PER_FRAME = 20; //milliseconds
 
 constexpr int SCREEN_WIDTH = VIEW_WIDTH * NUM_VIEWS;

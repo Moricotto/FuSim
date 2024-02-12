@@ -152,7 +152,6 @@ public:
         }
     }
 
-    //TODO: if T is Unsigned, return Unsigned, if T is signed return Signed
     Signed<T::integer, T::fraction + Pos::fraction * 2> gather(Pos y, Pos x) const {
         using ret_t = Signed<T::integer, T::fraction + Pos::fraction * 2>;
         using Dist = Signed<0, Pos::fraction>;

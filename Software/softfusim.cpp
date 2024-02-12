@@ -5,7 +5,7 @@
 #include "pusher.hpp"
 #include <fstream>
 #include <random>
-#include <math.h>
+#include <cmath>
 #include <algorithm>
 #include <chrono>
 //#include "filewriter.hpp"
@@ -40,6 +40,9 @@ void writeToFileS(const SGrid<T>& grid, std::string filename) {
 }
 
 int main() {
+    #ifdef DEBUG
+    std::cout << "DEBUG MODE" << std::endl;
+    #endif // DEBUG
     //initialize the grid of magnetic field values and gyroradii
     UGrid<Bmag> bmag{Bmag{1.f}};
     bmag.setAll(Bmag{1.f});
@@ -47,8 +50,8 @@ int main() {
     std::array<UGrid<Pos>, NUM_VPERP> gyroradii;
     for (unsigned int y = 0; y < GRIDY; y++) {
         for (unsigned int x = 0; x < GRIDX; x++) {
-            bmag(y, x) = Bmag{(float)abs((long)(x - 32))/32 + 1};
-            //bmag(y, x) = Bmag{(float) x / 64 * 2 + 1}; //Bmag{((x - 32) * (x - 32) + (y - 32) * (y - 32) + 1024)/1024.f};
+            float intensity = ((float)abs((long)x - 32))/32.f + 1.f;
+            bmag(y, x) = Bmag{intensity};            //bmag(y, x) = Bmag{(float) x / 64 * 2 + 1}; //Bmag{((x - 32) * (x - 32) + (y - 32) * (y - 32) + 1024)/1024.f};
             for (unsigned int v = 0; v < NUM_VPERP; v++) {
                 gyroradii[v](y, x) = Pos{vperp[v].div<Pos::fraction, Bmag::integer, Bmag::fraction>(bmag(y, x))};
             }

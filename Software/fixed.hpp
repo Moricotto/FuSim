@@ -246,7 +246,7 @@ public:
         using next_size = typename type_from_size<roundToNeareastIntSize(I + FQ + FD)>::utype;
         return Unsigned<I + FD, FQ>{(static_cast<next_size>(this->value) << (FQ + FD - F)) / static_cast<next_size>(rhs.value)};
         #else
-        return Unsigned<I + FQ + FD - F, FQ>{this->value / rhs.value};
+        return Unsigned<I + FD, FQ>{this->value / rhs.value};
         #endif
     }
 
