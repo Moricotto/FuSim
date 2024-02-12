@@ -24,14 +24,17 @@ package defs;
     parameter NUM_ROWS = 64;
     parameter NUM_COLS = 64;
     parameter NUM_CELLS = NUM_ROWS * NUM_COLS;
-    parameter GRID_ADDRWIDTH = $clog2(NUM_CELLS);
+    parameter GRID_ADDRWIDTH = $clog2(NUM_CELLS);    
+    //number of delta functions used to discretise maxwellian in order to solve poisson equation
+    parameter NUM_DELTA = 3;
+    parameter NUM_IT = 8;
 
     // Particle precision parameters
     parameter PWIDTH = 18;
     parameter PFRAC = PWIDTH - $clog2(NUM_ROWS);
     parameter PINT = PWIDTH - PFRAC;
     typedef struct packed {
-        logic [PINT-1:0] whole;
+        logic [PWIDTH-1:PFRAC] whole;
         logic [PFRAC-1:0] fraction;
     } pos_t;
 
@@ -39,7 +42,7 @@ package defs;
     parameter VPERPFRAC = 12;
     parameter VPERPINT = VPERPWIDTH - VPERPFRAC;
     typedef struct packed {
-        logic [VPERPINT-1:0] whole;
+        logic [VPERPWIDTH-1:VPERPFRAC] whole;
         logic [VPERPFRAC-1:0] fraction;
     } vperp_t;
     
@@ -47,35 +50,39 @@ package defs;
     parameter CFRAC = 24;
     parameter CINT = CWIDTH - CFRAC;
     typedef struct packed {
-        logic [CINT-1:0] whole;
+        logic [CWIDTH-1:CFRAC] whole;
         logic [CFRAC-1:0] fraction;
     } charge_t;
 
     typedef logic [GRID_ADDRWIDTH-1:0] addr_t;
     typedef logic [PFRAC*2-1:0] coeff_t;
 
+    typedef struct packed signed {
+        logic [23:20] whole;
+        logic [19:0] fraction;
+    } const_t;
     // Grid precision parameters
     parameter PHIWIDTH = 35;
-    parameter PHIFRAC = 30;
+    parameter PHIFRAC = 27;
     parameter PHIINT = PHIWIDTH - PHIFRAC;
-    typedef struct packed {
-        logic signed [PHIINT-1:0] whole;
-        logic signed [PHIFRAC-1:0] fraction;
+    typedef struct packed signed {
+        logic [PHIWIDTH-1:PHIFRAC] whole;
+        logic [PHIFRAC-1:0] fraction;
     } phi_t;
 
     parameter EWIDTH = PHIWIDTH;
     parameter EFRAC = PHIFRAC;
     parameter EINT = EWIDTH - EFRAC;
-    typedef struct packed {
-        logic signed [EINT-1:0] whole;
-        logic signed [EFRAC-1:0] fraction;
+    typedef struct packed signed {
+        logic [EWIDTH-1:EFRAC] whole;
+        logic [EFRAC-1:0] fraction;
     } elect_t;
 
     parameter BWIDTH = 14;
     parameter BFRAC = 12;
     parameter BINT = BWIDTH - BFRAC;
     typedef struct packed {
-        logic [BINT-1:0] whole;
+        logic [BWIDTH-1:BFRAC] whole;
         logic [BFRAC-1:0] frac;
     } bmag_t;
 
@@ -83,7 +90,7 @@ package defs;
     parameter MUFRAC = 18;
     parameter MUINT = MUWIDTH - MUFRAC;
     typedef struct packed {
-        logic [MUINT-1:0] whole;
+        logic [MUWIDTH-1:MUFRAC] whole;
         logic [MUFRAC-1:0] frac;
     } mu_t;
 
@@ -99,12 +106,6 @@ package defs;
 
     parameter PSIZE = $bits(particle_t);
     parameter NUM_PARTICLES = 16384;
-
-    //gridpoint address and charge struct
-    typedef struct packed {
-        logic [GRID_ADDRWIDTH-3:0] addr;
-        charge_t charge;
-    } scatter_t;
 
     //distances from particle to gridpoints
     typedef struct packed {
