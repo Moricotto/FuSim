@@ -14,3 +14,4 @@ Backup/*
 pat.txt
 Notes/*
 !Notes/*.md
+Software/__pycache__/*
