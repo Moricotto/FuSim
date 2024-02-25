@@ -13,13 +13,13 @@
         "PortAType": [ { "value": "Signed", "value_src": "user", "resolve_type": "user", "usage": "all" } ],
         "PortAWidth": [ { "value": "19", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "PortBType": [ { "value": "Unsigned", "value_src": "user", "resolve_type": "user", "usage": "all" } ],
-        "PortBWidth": [ { "value": "22", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
+        "PortBWidth": [ { "value": "28", "value_src": "user", "resolve_type": "user", "format": "long", "usage": "all" } ],
         "ConstValue": [ { "value": "129", "resolve_type": "user", "enabled": false, "usage": "all" } ],
         "CcmImp": [ { "value": "Distributed_Memory", "resolve_type": "user", "usage": "all" } ],
         "Multiplier_Construction": [ { "value": "Use_Mults", "value_src": "user", "resolve_type": "user", "usage": "all" } ],
         "OptGoal": [ { "value": "Speed", "resolve_type": "user", "usage": "all" } ],
         "Use_Custom_Output_Width": [ { "value": "false", "resolve_type": "user", "format": "bool", "usage": "all" } ],
-        "OutputWidthHigh": [ { "value": "40", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
+        "OutputWidthHigh": [ { "value": "46", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
         "OutputWidthLow": [ { "value": "0", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
         "UseRounding": [ { "value": "false", "resolve_type": "user", "format": "bool", "enabled": false, "usage": "all" } ],
         "RoundPoint": [ { "value": "0", "resolve_type": "user", "format": "long", "enabled": false, "usage": "all" } ],
@@ -39,9 +39,9 @@
         "C_LATENCY": [ { "value": "4", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_A_WIDTH": [ { "value": "19", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_A_TYPE": [ { "value": "0", "resolve_type": "generated", "format": "long", "usage": "all" } ],
-        "C_B_WIDTH": [ { "value": "22", "resolve_type": "generated", "format": "long", "usage": "all" } ],
+        "C_B_WIDTH": [ { "value": "28", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_B_TYPE": [ { "value": "1", "resolve_type": "generated", "format": "long", "usage": "all" } ],
-        "C_OUT_HIGH": [ { "value": "40", "resolve_type": "generated", "format": "long", "usage": "all" } ],
+        "C_OUT_HIGH": [ { "value": "46", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_OUT_LOW": [ { "value": "0", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_MULT_TYPE": [ { "value": "1", "resolve_type": "generated", "format": "long", "usage": "all" } ],
         "C_CE_OVERRIDES_SCLR": [ { "value": "0", "resolve_type": "generated", "format": "long", "usage": "all" } ],
@@ -79,8 +79,8 @@
       "ports": {
         "CLK": [ { "direction": "in", "driver_value": "0x1" } ],
         "A": [ { "direction": "in", "size_left": "18", "size_right": "0", "driver_value": "0" } ],
-        "B": [ { "direction": "in", "size_left": "21", "size_right": "0", "driver_value": "0" } ],
-        "P": [ { "direction": "out", "size_left": "40", "size_right": "0", "driver_value": "0" } ]
+        "B": [ { "direction": "in", "size_left": "27", "size_right": "0", "driver_value": "0" } ],
+        "P": [ { "direction": "out", "size_left": "46", "size_right": "0", "driver_value": "0" } ]
       },
       "interfaces": {
         "a_intf": {

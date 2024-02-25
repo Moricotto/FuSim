@@ -43,6 +43,7 @@ module accumulator (
     logic valid_mult2;
     coeff_t [3:0] charge_coeff;
     coeff_t [3:0] charge_coeff_ff;
+    logic valid_coeffs;
     charge_t [3:0] stored_charge_ff;
     logic valid_stored_charge;
     logic [3:0] [2:0] addend_sel;
@@ -59,29 +60,29 @@ module accumulator (
 
     dist_mult mult00 (
         .CLK(clk),
-        .A(inv_dist_ff.y_frac),
-        .B(inv_dist_ff.x_frac),
+        .A(inv_dist_ff[0].y_frac),
+        .B(inv_dist_ff[0].x_frac),
         .P(charge_coeff[0])
     );
 
     dist_mult mult01 (
         .CLK(clk),
-        .A(inv_dist_ff.y_frac),
-        .B(dist_ff.x_frac),
+        .A(inv_dist_ff[0].y_frac),
+        .B(dist_ff[0].x_frac),
         .P(charge_coeff[1])
     );
 
     dist_mult mult10 (
         .CLK(clk),
-        .A(dist_ff.y_frac),
-        .B(inv_dist_ff.x_frac),
+        .A(dist_ff[0].y_frac),
+        .B(inv_dist_ff[0].x_frac),
         .P(charge_coeff[2])
     );
 
     dist_mult mult11 (
         .CLK(clk),
-        .A(dist_ff.y_frac),
-        .B(dist_ff.x_frac),
+        .A(dist_ff[0].y_frac),
+        .B(dist_ff[0].x_frac),
         .P(charge_coeff[3])
     );
 
@@ -101,8 +102,8 @@ module accumulator (
                 post_post_post_charge_ff[i] <= '0;
                 post_post_post_post_charge_ff[i] <= '0;
             end
-            dist_ff <= '0;
-            inv_dist_ff <= '0;
+            dist_ff <= '{default:'0};
+            inv_dist_ff <= '{default:'0};
             for (int i = 0; i < 6; i++) begin
                 for (int j = 0; j < 4; j++) begin
                     if (i != 5) begin
@@ -122,8 +123,8 @@ module accumulator (
         end else begin
             //stage 1
             if (valid_in) begin
-                dist_ff[0] <= {gyropoint.y.frac, gyropoint.x.frac};
-                inv_dist_ff[0] <= {12'hfff - gyropoint.y.frac + 1, 12'hfff - gyropoint.x.frac + 1};
+                dist_ff[0] <= {gyropoint.y.fraction, gyropoint.x.fraction};
+                inv_dist_ff[0] <= {12'hfff - gyropoint.y.fraction + 1, 12'hfff - gyropoint.x.fraction + 1};
                 for (int i = 0; i < 4; i++) begin
                     addr[0][i] <= {gyropoint.y.whole + i[1], gyropoint.x.whole + i[0]};
                 end
@@ -156,17 +157,17 @@ module accumulator (
             end
             if (valid_mult2) begin
                 if (dist_ff[3].y_frac == '0 && dist_ff[3].x_frac == '0) begin
-                    charge_coeff[0] <= 24'h400000
+                    charge_coeff_ff[0] <= 24'h400000;
                 end else if (dist_ff[3].y_frac == '0) begin
-                    charge_coeff[0] <= inv_dist_ff[3].x_frac << 10;
-                    charge_coeff[1] <= dist_ff[3].x_frac << 10;
-                    charge_coeff[2] <= '0;
-                    charge_coeff[3] <= '0;
+                    charge_coeff_ff[0] <= inv_dist_ff[3].x_frac << 12;
+                    charge_coeff_ff[1] <= dist_ff[3].x_frac << 12;
+                    charge_coeff_ff[2] <= '0;
+                    charge_coeff_ff[3] <= '0;
                 end else if (dist_ff[3].x_frac == '0) begin
-                    charge_coeff[0] <= inv_dist_ff[3].y_frac << 10;
-                    charge_coeff[1] <= '0;
-                    charge_coeff[2] <= dist_ff[3].y_frac << 10;
-                    charge_coeff[3] <= '0;
+                    charge_coeff_ff[0] <= inv_dist_ff[3].y_frac << 12;
+                    charge_coeff_ff[1] <= '0;
+                    charge_coeff_ff[2] <= dist_ff[3].y_frac << 12;
+                    charge_coeff_ff[3] <= '0;
                 end else begin
                     for (int i = 0; i < 4; i++) begin
                         charge_coeff_ff[i] <= charge_coeff[i];
@@ -178,15 +179,16 @@ module accumulator (
             end
             
             if (valid_coeffs) begin
-                stored_charge_ff[i] <= charge_in[i];
-                addr[0][i] <= swapped_addr_in[i];
-                charge_coeff_ff[1][i] <= charge_coeff_ff[0][i];
-                addend_sel[i] <= 
-                    (addr[0][i] == swapped_addr_in[i]) ? 3'b000 :
-                    (addr[1][i] == swapped_addr_in[i]) ? 3'b001 :
-                    (addr[2][i] == swapped_addr_in[i]) ? 3'b010 :
-                    (addr[3][i] == swapped_addr_in[i]) ? 3'b011 : 
-                    (addr[4][i] == swapped_addr_in[i]) ? 3'b100 : 3'b101;
+                for (int i = 0; i < 4; i++) begin
+                    stored_charge_ff[i] <= charge_in[i];
+                    addr[0][i] <= swapped_addr_in[i];
+                    charge_coeff_ff[1][i] <= charge_coeff_ff[0][i];
+                    addend_sel[i] <= 
+                        (addr[0][i] == swapped_addr_in[i]) ? 3'b000 :
+                        (addr[1][i] == swapped_addr_in[i]) ? 3'b001 :
+                        (addr[2][i] == swapped_addr_in[i]) ? 3'b010 :
+                        (addr[3][i] == swapped_addr_in[i]) ? 3'b011 : 
+                        (addr[4][i] == swapped_addr_in[i]) ? 3'b100 : 3'b101;
                 end
                 valid_stored_charge <= 1'b1;
             end else begin
@@ -244,7 +246,9 @@ module accumulator (
             end
 
             if (valid_post_post_post_charge) begin
-                post_post_post_post_charge_ff[i] <= post_post_post_charge_ff[i];
+                for (int i = 0; i < 4; i++) begin
+                    post_post_post_post_charge_ff[i] <= post_post_post_charge_ff[i];
+                end
             end
 
 

@@ -19,11 +19,12 @@
 // 
 //////////////////////////////////////////////////////////////////////////////////
 
-module full_scatterer(
+module full_scatterer (
     input logic clk,
     input logic rst,
     input logic valid_scatter,
     input particle_t particle_in [1:0],
+    output logic done,
     input logic valid_req,
     input addr_t [3:0] grid_addr_in [1:0],
     output charge_t [3:0] charge_out [1:0]
@@ -36,6 +37,7 @@ module full_scatterer(
         .rst(rst),
         .valid_scatter(valid_scatter),
         .particle_in(particle_in[0]),
+        .done(done),
         .valid_req(valid_req),
         .grid_addr_in(grid_addr_in),
         .charge_out(charge[0])
@@ -46,6 +48,7 @@ module full_scatterer(
         .rst(rst),
         .valid_scatter(valid_scatter),
         .particle_in(particle_in[1]),
+        .done(),
         .valid_req(valid_req),
         .grid_addr_in(grid_addr_in),
         .charge_out(charge[1])

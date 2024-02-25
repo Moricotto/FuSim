@@ -110,8 +110,8 @@ module grid_mem #(parameter WIDTH = 36, parameter NO_RST = 0) (
         end
     endgenerate
 
-    function logic [GRID_ADDRWIDTH-3:0] getTrueAddr(input logic [GRID_ADDRWIDTH-1:0] addr);
-        return {addr[GRID_ADDRWIDTH-1:GRID_ADDRWIDTH-PINT+1], addr[PINT-1:1]};
+    function logic [GRID_ADDRWIDTH-3:0] getTrueAddr(input addr_t addr);
+        return {addr.y[PINT-1:1], addr.x[PINT-1:1]};
     endfunction
 
     always_comb begin
@@ -131,22 +131,18 @@ module grid_mem #(parameter WIDTH = 36, parameter NO_RST = 0) (
                 true_addrb[i] <= '0;
                 swapped_dina[i] <= '0;
                 swapped_dinb[i] <= '0;
-                swapped_uina[i] <= '0;
-                swapped_uinb[i] <= '0;
                 wea_ff[i] <= 1'b0;
                 web_ff[i] <= 1'b0;
+                swapped_addra_ff <= '{default:'0};
+                swapped_addrb_ff <= '{default:'0};
                 sela_ff[0][i] <= '0;
                 selb_ff[0][i] <= '0;
                 sela_ff[1][i] <= '0;
                 selb_ff[1][i] <= '0;
-                swapped_uina_ff[i] <= '0;
-                swapped_uinb_ff[i] <= '0;
                 do_reseta[i] <= '0;
                 do_resetb[i] <= '0;
                 douta[i] <= '0;
                 doutb[i] <= '0;
-                uouta[i] <= '0;
-                uoutb[i] <= '0;
             end
         end else begin
             for (int i = 0; i < 4; i++) begin
@@ -154,13 +150,11 @@ module grid_mem #(parameter WIDTH = 36, parameter NO_RST = 0) (
                 true_addra[sela[i]] <= getTrueAddr(addra[i]); //{addra[GRID_ADDRWIDTH-:PINT+1] + i[1], addra[PINT-1:1] + i[0]};
                 swapped_addra_ff[0][sela[i]] <= addra[i];
                 swapped_dina[sela[i]] <= dina[i];
-                wea_ff[sela[i]] <= 1'b1;
-                true_addrb[selb[i]] <= getTrueAddr(addrb + i[0] + (i[1] << PINT));
+                wea_ff[sela[i]] <= wea[i];
+                true_addrb[selb[i]] <= getTrueAddr(addrb[i]);
                 swapped_addrb_ff[0][selb[i]] <= addrb[i];
                 swapped_dinb[selb[i]] <= dinb[i];
-                web_ff[selb[i]] <= 1'b1;
-                swapped_uina[sela[i]] <= uina[i];
-                swapped_uinb[selb[i]] <= uinb[i];
+                web_ff[selb[i]] <= web[i];
                 sela_ff[0][i] <= sela[i];
                 selb_ff[0][i] <= selb[i];
 
@@ -192,6 +186,7 @@ module grid_mem #(parameter WIDTH = 36, parameter NO_RST = 0) (
                 sela_ff[2][i] <= sela_ff[1][i];
                 selb_ff[2][i] <= selb_ff[1][i];
                 swapped_addra_ff[2][i] <= swapped_addra_ff[1][i];
+                swapped_addrb_ff[2][i] <= swapped_addrb_ff[1][i];
                 do_reseta[1][i] <= do_reseta[0][i];
                 do_resetb[1][i] <= do_resetb[0][i];
 

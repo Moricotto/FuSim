@@ -37,7 +37,6 @@ module scatterer (
     //signals for scatter step
     posvec_t pos;
     addr_t [3:0] grid_addr;
-    bmag_t [3:0] dummy_wdata;
     bmag_t [3:0] bmag_out;
     particle_t user_out;
     particle_t particle_ff;
@@ -51,10 +50,9 @@ module scatterer (
     pos_t [3:0] gyropoints_x;
     charge_t [3:0] stored_charge [3:0];
     addr_t [3:0] swapped_addr [3:0];
-    addr_t waddr [3:0];
+    addr_t [3:0] waddr [3:0];
     charge_t [3:0] new_charge [3:0];
-    addr_t raddr [3:0];
-    addr_t [3:0] unswapped_addr [3:0];
+    addr_t [3:0] raddr [3:0];
     //signals for solve step
     addr_t [3:0] requested_addra;
     addr_t [3:0] requested_addrb;
@@ -69,6 +67,8 @@ module scatterer (
     addr_t [3:0] addrb [3:0];
     charge_t [3:0] douta [3:0];
     charge_t [3:0] doutb [3:0];
+    logic [13:0] cnt;
+    logic done_ff [9:0];
 
     //valids
     logic valid_interpolated;
@@ -80,13 +80,13 @@ module scatterer (
     logic valid_gyropoint;
     
     logic valid_addrs;
-    logic valid_mem [2:0];
+    logic valid_mem [3:0];
     logic valid_charge_out;
     logic valid_halfcharges;
     logic valid_accum [7:0];
 
 
-    assign pos = {particle_in.y, particle_in.x};
+    assign pos = {particle_in.pos.y, particle_in.pos.x};
     interpolator #(.DWIDTH(BWIDTH), .UWIDTH(PSIZE)) bmag_interpolate (
         .clk(clk),
         .rst(rst),
@@ -104,24 +104,22 @@ module scatterer (
     grid_mem #(.WIDTH(BWIDTH), .NO_RST(1)) bmag_grid (
         .clk(clk),
         .rst(rst),
+        .swap_rout(1'b1),
         .wea(4'b0),
         .web(4'b0),
         .addra(grid_addr),
         .addrb('0),
         .dina('0),
         .dinb('0),
-        .uina('0),
-        .uinb('0),
         .douta(bmag_out),
         .doutb(),
-        .uouta(),
-        .uoutb()
+        .swapped_addra(),
+        .swapped_addrb()
     );
     
     gyroradius_div divider (
         .aclk(clk),                                      // input wire aclk
         .s_axis_divisor_tvalid(valid_bmag),    // input wire s_axis_divisor_tvalid
-        .s_axis_divisor_tuser(),
         .s_axis_divisor_tdata(bmag_ff),      // input wire [15 : 0] s_axis_divisor_tdata
         .s_axis_dividend_tvalid(valid_bmag),  // input wire s_axis_dividend_tvalid
         .s_axis_dividend_tuser(particle_ff),    // input wire [11 : 0] s_axis_dividend_tuser
@@ -132,7 +130,7 @@ module scatterer (
     );
 
     
-    generate;
+    generate
         for (genvar i = 0; i < 4; i++) begin
             assign addra[i] = valid_addrs ? requested_addra : raddr[i];
             assign addrb[i] = valid_addrs ? requested_addrb : waddr[i];
@@ -146,7 +144,7 @@ module scatterer (
                 .swapped_addr_in(swapped_addr[i]),
                 .waddr_out(waddr[i]),
                 .charge_out(new_charge[i]),
-                .raddr_out(raddr[i]),
+                .raddr_out(raddr[i])
             );
 
             //bram instantiation
@@ -168,6 +166,7 @@ module scatterer (
         end
     endgenerate;
 
+    assign done = done_ff[9];
     always_ff @(posedge clk) begin
         rst_ff <= rst;
         if (rst_ff) begin
@@ -179,6 +178,7 @@ module scatterer (
             particle_ff <= '0;
             gyroradius_ff <= '0;
             gyrocenter_ff <= '0;
+            cnt <= '0;
             //reset valids
             valid_partials <= 1'b0;
             valid_halfpartials <= 1'b0;
@@ -188,6 +188,7 @@ module scatterer (
             for (int i = 0; i < 8; i++) begin
                 valid_accum[i] <= 1'b0;
             end
+            done_ff <= '{default:'0};
             //for solve step
             requested_addra <= '0;
             requested_addrb <= '0;
@@ -207,89 +208,93 @@ module scatterer (
             valid_charge_out <= 1'b0;
             valid_halfcharges <= 1'b0;
         end else begin
-            case (step)
-            SCATTER: begin
-                //interpolation is performed by interpolator module
-                if (valid_interpolated) begin
-                    bmag_ff <= total_bmag[BWIDTH+PFRAC*2-1-:BWIDTH];
-                    particle_ff <= user_out;
-                    valid_bmag <= 1'b1;
-                end else begin
-                    valid_bmag <= 1'b0;
-                end
-
-                //here, the division is performed to get the gyroradius
-                
-                if (valid_div) begin
-                    gyroradius_ff <= divider_out[PWIDTH-1:0];
-                    gyrocenter_ff <= div_user_out.pos;
-                    valid_gyroradius <= 1'b1;
-                end else begin
-                    valid_gyroradius <= 1'b0;
-                end
-
-                if (valid_gyroradius) begin
-                    for (int i = 0; i < 4; i++) begin
-                        //note that this can wrap, and this behaviour is desired to enforce periodic boundary condition
-                        //this is why the y and x components of the gyropoint are treated separately
-                        gyropoints_y[i] <= gyrocenter_ff.y + (i[1] ? (i[0] ? gyroradius_ff : -gyroradius_ff) : 1'b0);
-                        gyropoints_x[i] <= gyrocenter_ff.x + (i[1] ? 1'b0 : (i[0] ? gyroradius_ff : -gyroradius_ff));
-                    end
-                    valid_gyropoint <= 1'b1;
-                end else begin
-                    valid_gyropoint <= 1'b0;
-                end
-
-                //TODO: tlast counting  implementation, considering that it will take 8 clocks to go through the accumulator and be written to a BRAM
+            //interpolation is performed by interpolator module
+            if (valid_interpolated) begin
+                bmag_ff <= total_bmag[BWIDTH+PFRAC*2-1-:BWIDTH];
+                particle_ff <= user_out;
+                valid_bmag <= 1'b1;
+            end else begin
+                valid_bmag <= 1'b0;
             end
 
-            SOLVE: begin
-                if (valid_req) begin
-                    requested_addra <= grid_addr_in[0];
-                    requested_addrb <= grid_addr_in[1];
-                    valid_addrs <= 1'b1;
-                end else begin
-                    valid_addrs <= 1'b0;
-                end
-
-                //wait four cycles
-                valid_mem[0] <= valid_addrs;
-                valid_mem[1] <= valid_mem[0];
-                valid_mem[2] <= valid_mem[1];
-                valid_mem[3] <= valid_mem[2];
-
-                if (valid_mem[3]) begin
-                    for (int i = 0; i < 4; i++) begin
-                        for (int j = 0; j < 4; j++) begin
-                            charge_outa[i][j] <= douta[i][j];
-                            charge_outb[i][j] <= doutb[i][j];
-                        end
-                    end
-                    valid_charge_out <= 1'b1;
-                end else begin
-                    valid_charge_out <= 1'b0;
-                end
-
-                if (valid_charge_out) begin
-                    for (int i = 0; i < 2; i++) begin
-                        for (int j = 0; j < 4; j++) begin
-                            half_chargea[i][j] <= charge_outa[i][j] + charge_outa[i+2][j];
-                            half_chargeb[i][j] <= charge_outb[i][j] + charge_outb[i+2][j];
-                        end
-                    end
-                    valid_halfcharges <= 1'b1;
-                end else begin
-                    valid_halfcharges <= 1'b0;
-                end
-
-                if (valid_halfcharges) begin
-                    for (int i = 0; i < 4; i++) begin
-                        charge_out[0][i] <= half_chargea[0][i] + half_chargea[1][i];
-                        charge_out[1][i] <= half_chargeb[0][i] + half_chargeb[1][i];
-                    end 
-                end
+            //here, the division is performed to get the gyroradius
+            
+            if (valid_div) begin
+                gyroradius_ff <= divider_out[PWIDTH-1:0];
+                gyrocenter_ff <= div_user_out.pos;
+                valid_gyroradius <= 1'b1;
+            end else begin
+                valid_gyroradius <= 1'b0;
             end
-            endcase
+
+            if (valid_gyroradius) begin
+                for (int i = 0; i < 4; i++) begin
+                    //note that this can wrap, and this behaviour is desired to enforce periodic boundary condition
+                    //this is why the y and x components of the gyropoint are treated separately
+                    gyropoints_y[i] <= gyrocenter_ff.y + (i[1] ? (i[0] ? gyroradius_ff : -gyroradius_ff) : 1'b0);
+                    gyropoints_x[i] <= gyrocenter_ff.x + (i[1] ? 1'b0 : (i[0] ? gyroradius_ff : -gyroradius_ff));
+                    cnt <= cnt + 1;
+                end
+                valid_gyropoint <= 1'b1;
+            end else begin
+                valid_gyropoint <= 1'b0;
+            end
+
+            done_ff[0] <= cnt == NUM_PARTICLES - 1;
+            done_ff[1] <= done_ff[0];
+            done_ff[2] <= done_ff[1];
+            done_ff[3] <= done_ff[2];
+            done_ff[4] <= done_ff[3];
+            done_ff[5] <= done_ff[4];
+            done_ff[6] <= done_ff[5];
+            done_ff[7] <= done_ff[6];
+            done_ff[8] <= done_ff[7];
+            done_ff[9] <= done_ff[8];
+
+            if (valid_req) begin
+                requested_addra <= grid_addr_in[0];
+                requested_addrb <= grid_addr_in[1];
+                valid_addrs <= 1'b1;
+            end else begin
+                valid_addrs <= 1'b0;
+            end
+
+            //wait four cycles
+            valid_mem[0] <= valid_addrs;
+            valid_mem[1] <= valid_mem[0];
+            valid_mem[2] <= valid_mem[1];
+            valid_mem[3] <= valid_mem[2];
+
+            if (valid_mem[3]) begin
+                for (int i = 0; i < 4; i++) begin
+                    for (int j = 0; j < 4; j++) begin
+                        charge_outa[i][j] <= douta[i][j];
+                        charge_outb[i][j] <= doutb[i][j];
+                    end
+                end
+                valid_charge_out <= 1'b1;
+            end else begin
+                valid_charge_out <= 1'b0;
+            end
+
+            if (valid_charge_out) begin
+                for (int i = 0; i < 2; i++) begin
+                    for (int j = 0; j < 4; j++) begin
+                        half_chargea[i][j] <= charge_outa[i][j] + charge_outa[i+2][j];
+                        half_chargeb[i][j] <= charge_outb[i][j] + charge_outb[i+2][j];
+                    end
+                end
+                valid_halfcharges <= 1'b1;
+            end else begin
+                valid_halfcharges <= 1'b0;
+            end
+
+            if (valid_halfcharges) begin
+                for (int i = 0; i < 4; i++) begin
+                    charge_out[0][i] <= half_chargea[0][i] + half_chargea[1][i];
+                    charge_out[1][i] <= half_chargeb[0][i] + half_chargeb[1][i];
+                end 
+            end
         end
     end
 endmodule

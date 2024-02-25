@@ -10,7 +10,7 @@ void push(Particles& particles, const UGrid<Bmag>& bmag, const SGrid<Phi>& phi) 
     using GradBVec = Pair<InterpGradB>;
     using InterpBmag = Unsigned<Bmag::integer, Bmag::fraction + Pos::fraction * 2>;
     using Disp = Signed<Pos::integer, Pos::fraction>;
-    using GradBxB = Signed<GradB::bits, 12>;
+    using GradBxB = Signed<2, 12>;
 
     for (Particle& particle : particles) {
         //first step is to interpolate the bmag to the particle position
@@ -113,7 +113,7 @@ void push(Particles& particles, const UGrid<Bmag>& bmag, const SGrid<Phi>& phi) 
         Pair<Efield> true_efield = static_cast<Pair<Efield>>(total_efield);
         Pair<GradB> true_grad_b = static_cast<Pair<GradB>>(total_gradB);
         Bmag true_bmag = static_cast<Bmag>(total_bmag);
-
+        Efield
         //now we divide the totalEfield by the totalBmag and implicitly take the cross product with the b unit vector to get the ExB drift velocity
         Pair<Disp> exb_disp = Pair<Disp>{static_cast<Disp>(true_efield.x.div<15 + SLOWDOWN, Bmag::integer, Bmag::fraction>(static_cast<Signed<Bmag::integer, Bmag::fraction>>(true_bmag)) >> SLOWDOWN), static_cast<Disp>((-true_efield.y).div<15 + SLOWDOWN, Bmag::integer, Bmag::fraction>(static_cast<Signed<Bmag::integer, Bmag::fraction>>(true_bmag))  >> SLOWDOWN)};
         //same for the gradB drift velocity

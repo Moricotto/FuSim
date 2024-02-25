@@ -37,26 +37,28 @@ module grid_solver (
     input addr_t grid_addr,
     output addr_t gyro_addr,
     input pos_t [NUM_DELTA-1:0] gyroradius,
+    output logic valid_out,
     output addr_t [NUM_DELTA-1:0] [7:0] [3:0] raddr_out,
     input phi_t [NUM_DELTA-1:0] [7:0] [3:0] prev_in,
     output addr_t waddr_out,
-    output phi_t phi_out
+    output phi_t phi_out,
 
     //to/from scatterer, to get charge
     output logic valid_req,
     output addr_t charge_addr,
-    input charge_t charge_in,
+    input charge_t charge_in
     );
     
+    logic rst_ff;
     addr_t addr [22:0];
     pos_t [NUM_DELTA-1:0] gyroradius_ff;
-
-    pos_t [NUM_DELTA-1:0] [3:0] four_point_positions;
-    pos_t [NUM_DELTA-1:0] [3:0] two_point_positions;
-
+    pos_t [NUM_DELTA-1:0] [3:0] four_point_gyropoints_y;
+    pos_t [NUM_DELTA-1:0] [3:0] four_point_gyropoints_x;
+    pos_t [NUM_DELTA-1:0] [3:0] two_point_gyropoints_y;
+    pos_t [NUM_DELTA-1:0] [3:0] two_point_gyropoints_x;
     logic signed [NUM_DELTA-1:0] [3:0] [PHIWIDTH+PFRAC*2-1:0] four_point_interpolated_data;
     logic signed [NUM_DELTA-1:0] [3:0] [PHIWIDTH+PFRAC*2-1:0] two_point_interpolated_data;
-    logic addr_t post_gyrocenter;
+    addr_t post_gyrocenter;
     logic signed [NUM_DELTA-1:0] [3:0] [PHIWIDTH+PFRAC*2-1:0] four_point_interpolated_data_ff;
     logic signed [NUM_DELTA-1:0] [3:0] [PHIWIDTH+PFRAC*2-1:0] two_point_interpolated_data_ff;
     logic signed [NUM_DELTA-1:0] [1:0] [PHIWIDTH+PFRAC*2:0] four_point_half_sums_ff;
@@ -66,7 +68,7 @@ module grid_solver (
     logic signed [NUM_DELTA-1:0] [PHIWIDTH+PFRAC*2-1:0] total_phi_ff;
     logic signed [NUM_DELTA-1:0] [PHIWIDTH+PFRAC*2+24-1:0] weighted_phi;
     phi_t [NUM_DELTA-1:0] weighted_phi_ff;
-    logic singed [CINT+PHIFRAC:0] sum;
+    logic signed [CINT+PHIFRAC:0] sum;
     logic signed [CINT+PHIFRAC:0] true_phi_ff; //we add one bit because unlike charge, phi is signed
     logic signed [CINT+PHIFRAC:0] charge_ff;
     logic signed [CINT+PHIFRAC:0] diff_ff;
@@ -105,10 +107,9 @@ module grid_solver (
                         .interpolated_data_out(four_point_interpolated_data[v][i]),
                         .user_out(post_gyrocenter),
                         .data_in(prev_in[v][i]),
-                        .raddr_out(raddr_out[v][i]), 
+                        .raddr_out(raddr_out[v][i])
                     ); 
-                end
-                else begin
+                end else begin
                     interpolator #(.DWIDTH(PHIWIDTH), .STAGES(4)) four_point_interpolator (
                         .clk(clk),
                         .rst(rst),
@@ -119,28 +120,28 @@ module grid_solver (
                         .interpolated_data_out(four_point_interpolated_data[v][i]),
                         .user_out(),
                         .data_in(prev_in[v][i]),
-                        .raddr_out(raddr_out[v][i]), 
+                        .raddr_out(raddr_out[v][i])
                     ); 
                 end
-                
             end
             for (genvar j = 0; j < 4; j++) begin
                 interpolator #(.DWIDTH(PHIWIDTH), .STAGES(4)) two_point_interpolator (
-                        .clk(clk),
-                        .rst(rst),
-                        .valid(valid_positions),
-                        .pos({two_point_gyropoints_y[v][j], two_point_gyropoints_x[v][j]}),
-                        .user_in(),
-                        .valid_out(),
-                        .interpolated_data_out(two_point_interpolated_data[v][i]),
-                        .user_out(),
-                        .data_in(prev_in[v][j+4]),
-                        .raddr_out(raddr_out[v][j+4]), 
+                    .clk(clk),
+                    .rst(rst),
+                    .valid(valid_positions),
+                    .pos({two_point_gyropoints_y[v][j], two_point_gyropoints_x[v][j]}),
+                    .user_in(),
+                    .valid_out(),
+                    .interpolated_data_out(two_point_interpolated_data[v][j]),
+                    .user_out(),
+                    .data_in(prev_in[v][j+4]),
+                    .raddr_out(raddr_out[v][j+4])
                 ); 
             end
         end
     endgenerate
 
+    assign valid_req = valid_total;
     logic [NUM_DELTA-1:0] [23:0] local_vweights;
     assign local_vweights = VWEIGHTS;
 
@@ -167,11 +168,14 @@ module grid_solver (
     );
 
     always_ff @(posedge clk) begin
-        if (rst) begin
+        rst_ff <= rst;
+        if (rst_ff) begin
             addr <= '{default: '0};
             gyroradius_ff <= '0;
-            four_point_positions <= '0;
-            two_point_positions <= '0;
+            four_point_gyropoints_y <= '0;
+            four_point_gyropoints_x <= '0;
+            two_point_gyropoints_y <= '0;
+            two_point_gyropoints_x <= '0;
             four_point_interpolated_data_ff <= '0;
             two_point_interpolated_data_ff <= '0;
             four_point_half_sums_ff <= '0;
@@ -183,14 +187,12 @@ module grid_solver (
             true_phi_ff <= '0;
             charge_ff <= '0;
             diff_ff <= '0;
-            new_phi <= '0;
 
             //valids
             valid_addr <= 1'b0;
             valid_bram <= 1'b0;
             valid_gyroradius <= 1'b0;
             valid_positions <= 1'b0;
-            valid_interpol <= 1'b0;
             valid_reduced <= 1'b0;
             valid_halfsum <= 1'b0;
             valid_sum <= 1'b0;

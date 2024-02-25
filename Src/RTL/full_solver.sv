@@ -34,9 +34,9 @@ module full_solver(
     output addr_t [3:0] charge_raddr [1:0],
     
     //to/from pusher
+    input addr_t [3:0] [2:0] [3:0] phi_raddr_in [1:0],
     input logic valid_req,
-    input logic [3:0] [3:0] [GRID_ADDRWIDTH-1:0] phi_raddr_in [1:0],
-    output logic signed [3:0] [3:0] [3:0] [PHIWIDTH-1:0] phi_val [1:0]
+    output phi_t [3:0] [2:0] [3:0] phi_out [1:0]
     );
     
     logic in_progress;
@@ -47,10 +47,19 @@ module full_solver(
     addr_t gyro_addr; //address into gyroradius brams
     pos_t [NUM_DELTA-1:0] gyroradius; //gyroradius for each delta function
     addr_t [NUM_DELTA-1:0] [7:0] [3:0] phi_raddr; //addresses for reading phi
-    phi_t [NUM_DELTA-1:0] [7:0] [3:0] prev_phi; //phi values read from grid memories
+    phi_t [NUM_DELTA-1:0] [7:0] [3:0] prev_phi [1:0]; //phi values read from grid memories
+    logic valid_out; //valid signal from grid solver
     phi_t new_phi; //value of phi to be written to grid memory
     addr_t phi_waddr; //address to which the new value of phi is written
     
+
+    assign charge_raddr[0][1] = '0;
+    assign charge_raddr[0][2] = '0;
+    assign charge_raddr[0][3] = '0;
+    assign charge_raddr[1][0] = '0;
+    assign charge_raddr[1][1] = '0;
+    assign charge_raddr[1][2] = '0;
+    assign charge_raddr[1][3] = '0;
     //module instantiation
     grid_solver solver0 (
         .clk(clk),
@@ -59,26 +68,27 @@ module full_solver(
         .grid_addr(grid_addr),
         .gyro_addr(gyro_addr),
         .gyroradius(gyroradius),
+        .valid_out(valid_out),
         .raddr_out(phi_raddr),
-        .prev_in(prev_phi),
+        .prev_in(prev_phi[~sel]),
         .waddr_out(phi_waddr),
-        .phi_out(new_phi)
+        .phi_out(new_phi),
         .valid_req(valid_req_out),
         .charge_addr(charge_raddr[0][0]),
-        .charge_in(charges[0][0]),
+        .charge_in(charges[0][0])
 
     );
 
     //instantion of gyroradius brams
     generate;
-        for (genvar v = 0; v < NUM_DELTA; v++) {
+        for (genvar v = 0; v < NUM_DELTA; v++) begin
             gyro_mem (
                 .clka(clk),
                 .ena(1'b1),
                 .wea(1'b0),
                 .addra(gyro_addr),
                 .dina('0),
-                .douta(gyroradius[v])
+                .douta(gyroradius[v]),
                 //reserved for future use by second solver
                 .clkb(clk),
                 .enb(1'b0),
@@ -87,7 +97,7 @@ module full_solver(
                 .dinb('0),
                 .doutb('0)
             );
-        }
+        end
     endgenerate;
     //1 grid solver
     //each grid solver requires 2 groups of 4 * 3 grid memories, one to read to and on to write to
@@ -100,20 +110,20 @@ module full_solver(
                         .clk(clk),
                         .rst(rst),
                         .swap_rout(1'b1),
-                        .wea(sel == k ? 4'b1 : 4'b0),
+                        .wea((sel == k && in_progress) ? valid_out : 4'b0),
                         .web(4'b0),
-                        .addra(sel == k ? {'0, '0, '0, phi_waddr} : phi_raddr[v][j]),
-                        .addrb(phi_raddr[v][j+4]),
+                        .addra(in_progress ? (sel == k ? {'0, '0, '0, phi_waddr} : phi_raddr[v][j]) : phi_raddr_in[0][j][v]),
+                        .addrb(in_progress ? phi_raddr[v][j+4] : phi_raddr_in[1][j][v]),
                         .dina({'0, '0, '0, new_phi}),
                         .dinb('0),
-                        .uina('0),
-                        .uinb('0),
-                        .douta(prev_phi[v][j]),
-                        .doutb(prev_phi[v][j+4]),
-                        .uouta(),
-                        .uoutb()
-                    )
+                        .douta(prev_phi[k][v][j]),
+                        .doutb(prev_phi[k][v][j+4]),
+                        .swapped_addra(),
+                        .swapped_addrb()
+                    );
                 end
+                assign phi_out[0][j][v] = prev_phi[final_sel][v][j];
+                assign phi_out[1][j][v] = prev_phi[final_sel][v][j+4];
             end
         end
     endgenerate

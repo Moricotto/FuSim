@@ -25,14 +25,15 @@ package defs;
     parameter NUM_COLS = 64;
     parameter NUM_CELLS = NUM_ROWS * NUM_COLS;
     parameter GRID_ADDRWIDTH = $clog2(NUM_CELLS);    
-    //number of delta functions used to discretise maxwellian in order to solve poisson equation
-    parameter NUM_DELTA = 3;
+    parameter NUM_DELTA = 3; //number of delta functions used to discretise maxwellian in order to solve poisson equation
     parameter NUM_IT = 8;
+    parameter SLOWDOWN = 4; //amount to shift by in order to reduce the amount each particle moves per iteration
+
 
     // Particle precision parameters
     parameter PWIDTH = 18;
     parameter PFRAC = PWIDTH - $clog2(NUM_ROWS);
-    parameter PINT = PWIDTH - PFRAC;
+    parameter PINT = $clog2(NUM_ROWS);
     typedef struct packed {
         logic [PWIDTH-1:PFRAC] whole;
         logic [PFRAC-1:0] fraction;
@@ -54,7 +55,11 @@ package defs;
         logic [CFRAC-1:0] fraction;
     } charge_t;
 
-    typedef logic [GRID_ADDRWIDTH-1:0] addr_t;
+    typedef struct packed {
+        logic [GRID_ADDRWIDTH-1:PINT] y;
+        logic [PINT-1:0] x;
+    } addr_t; 
+
     typedef logic [PFRAC*2-1:0] coeff_t;
 
     typedef struct packed signed {
@@ -86,8 +91,13 @@ package defs;
         logic [BFRAC-1:0] frac;
     } bmag_t;
 
-    parameter MUWIDTH = 22;
-    parameter MUFRAC = 18;
+    typedef struct packed signed {
+        logic [BWIDTH:BFRAC] whole; //add one bit for sign
+        logic [BFRAC-1:0] frac;
+    } gradb_t;
+
+    parameter MUWIDTH = VPERPINT*2+BFRAC+PFRAC;
+    parameter MUFRAC = PFRAC;
     parameter MUINT = MUWIDTH - MUFRAC;
     typedef struct packed {
         logic [MUWIDTH-1:MUFRAC] whole;
@@ -109,13 +119,17 @@ package defs;
 
     //distances from particle to gridpoints
     typedef struct packed {
-        logic [PFRAC-1:0] y_frac;
+        logic [PFRAC*2-1:PFRAC] y_frac;
         logic [PFRAC-1:0] x_frac;
     } dist_t;
 
-    typedef struct packed {
+    typedef struct {
         elect_t y, x;
     } evec_t;
+
+    typedef struct {
+        gradb_t y, x;
+    } gradbvec_t;
 
 
     const logic [BWIDTH-1:0] BMIN = 14'h3627;
