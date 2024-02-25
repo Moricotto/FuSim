@@ -35,7 +35,7 @@ package defs;
     parameter PFRAC = PWIDTH - $clog2(NUM_ROWS);
     parameter PINT = $clog2(NUM_ROWS);
     typedef struct packed {
-        logic [PWIDTH-1:PFRAC] whole;
+        logic [PINT-1:0] whole;
         logic [PFRAC-1:0] fraction;
     } pos_t;
 
@@ -43,7 +43,7 @@ package defs;
     parameter VPERPFRAC = 12;
     parameter VPERPINT = VPERPWIDTH - VPERPFRAC;
     typedef struct packed {
-        logic [VPERPWIDTH-1:VPERPFRAC] whole;
+        logic [VPERPINT-1:0] whole;
         logic [VPERPFRAC-1:0] fraction;
     } vperp_t;
     
@@ -51,19 +51,19 @@ package defs;
     parameter CFRAC = 24;
     parameter CINT = CWIDTH - CFRAC;
     typedef struct packed {
-        logic [CWIDTH-1:CFRAC] whole;
+        logic [CINT-1:0] whole;
         logic [CFRAC-1:0] fraction;
     } charge_t;
 
     typedef struct packed {
-        logic [GRID_ADDRWIDTH-1:PINT] y;
+        logic [PINT-1:0] y;
         logic [PINT-1:0] x;
     } addr_t; 
 
     typedef logic [PFRAC*2-1:0] coeff_t;
 
     typedef struct packed signed {
-        logic [23:20] whole;
+        logic [3:0] whole;
         logic [19:0] fraction;
     } const_t;
     // Grid precision parameters
@@ -71,7 +71,7 @@ package defs;
     parameter PHIFRAC = 27;
     parameter PHIINT = PHIWIDTH - PHIFRAC;
     typedef struct packed signed {
-        logic [PHIWIDTH-1:PHIFRAC] whole;
+        logic [PHIINT-1:0] whole;
         logic [PHIFRAC-1:0] fraction;
     } phi_t;
 
@@ -79,7 +79,7 @@ package defs;
     parameter EFRAC = PHIFRAC;
     parameter EINT = EWIDTH - EFRAC;
     typedef struct packed signed {
-        logic [EWIDTH-1:EFRAC] whole;
+        logic [EINT-1:0] whole;
         logic [EFRAC-1:0] fraction;
     } elect_t;
 
@@ -87,12 +87,12 @@ package defs;
     parameter BFRAC = 12;
     parameter BINT = BWIDTH - BFRAC;
     typedef struct packed {
-        logic [BWIDTH-1:BFRAC] whole;
+        logic [BINT-1:0] whole;
         logic [BFRAC-1:0] frac;
     } bmag_t;
 
     typedef struct packed signed {
-        logic [BWIDTH:BFRAC] whole; //add one bit for sign
+        logic [BINT:0] whole; //add one bit for sign
         logic [BFRAC-1:0] frac;
     } gradb_t;
 
@@ -100,7 +100,7 @@ package defs;
     parameter MUFRAC = PFRAC;
     parameter MUINT = MUWIDTH - MUFRAC;
     typedef struct packed {
-        logic [MUWIDTH-1:MUFRAC] whole;
+        logic [MUINT-1:0] whole;
         logic [MUFRAC-1:0] frac;
     } mu_t;
 
@@ -119,7 +119,7 @@ package defs;
 
     //distances from particle to gridpoints
     typedef struct packed {
-        logic [PFRAC*2-1:PFRAC] y_frac;
+        logic [PFRAC-1:0] y_frac;
         logic [PFRAC-1:0] x_frac;
     } dist_t;
 
@@ -130,8 +130,5 @@ package defs;
     typedef struct {
         gradb_t y, x;
     } gradbvec_t;
-
-
-    const logic [BWIDTH-1:0] BMIN = 14'h3627;
 
 endpackage
