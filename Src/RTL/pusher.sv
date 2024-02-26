@@ -34,17 +34,17 @@ module pusher (
     output logic done,
     //to/from solver and bmag grid_mem
     input phi_t [3:0] [2:0] [3:0] phi_in,
+    input bmag_t [3:0] short_bmag_in,
     input bmag_t [3:0] [2:0] [3:0] bmag_in,
     output logic valid_req,
-    output addr_t [3:0] [2:0] [3:0] raddr
+    output addr_t [3:0] [2:0] [3:0] raddr,
+    output addr_t [3:0] short_bmag_addr
     );
 
     //signal declarations
     logic rst_ff;
     particle_t particle [21:0];
     posvec_t pos;
-    addr_t [3:0] grid_addr;
-    bmag_t [3:0] bmag_out;
     particle_t interpolator_particle_out;
     logic [BWIDTH+PFRAC*2-1:0] total_short_bmag;
     bmag_t bmag_ff;
@@ -173,24 +173,9 @@ module pusher (
         .valid_out(valid_interpolated),
         .interpolated_data_out(total_short_bmag),
         .user_out(interpolator_particle_out),
-        .data_in(bmag_out),
-        .raddr_out(grid_addr)
+        .data_in(short_bmag_in),
+        .raddr_out(short_bmag_addr)
         
-    );
-
-    grid_mem #(.WIDTH(BWIDTH), .NO_RST(1)) bmag_grid (
-        .clk(clk),
-        .rst(rst),
-        .wea(4'b0),
-        .web(4'b0),
-        .addra(grid_addr),
-        .addrb('0),
-        .dina('0),
-        .dinb('0),
-        .douta(bmag_out),
-        .doutb(),
-        .swapped_addra(),
-        .swapped_addrb()
     );
 
     gyroradius_div gyro_div (

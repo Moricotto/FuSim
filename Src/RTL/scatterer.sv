@@ -26,6 +26,8 @@ module scatterer (
     //from pusher
     input logic valid_scatter,
     input particle_t particle_in,
+    input bmag_t [3:0] bmag_in,
+    output addr_t [3:0] bmag_raddr,
     output logic done, //asserted when all particles have been scattered
     //from solver
     input logic valid_req,
@@ -95,26 +97,9 @@ module scatterer (
         .user_in(particle_in),
         .interpolated_data_out(total_bmag),
         .user_out(user_out),
-        .data_in(bmag_out),
+        .data_in(bmag_in),
         .valid_out(valid_interpolated),
-        .raddr_out(grid_addr)
-    );
-    
-    //ROMs containing bmag at every gridpoints
-    grid_mem #(.WIDTH(BWIDTH), .NO_RST(1)) bmag_grid (
-        .clk(clk),
-        .rst(rst),
-        .swap_rout(1'b1),
-        .wea(4'b0),
-        .web(4'b0),
-        .addra(grid_addr),
-        .addrb('0),
-        .dina('0),
-        .dinb('0),
-        .douta(bmag_out),
-        .doutb(),
-        .swapped_addra(),
-        .swapped_addrb()
+        .raddr_out(bmag_raddr)
     );
     
     gyroradius_div divider (

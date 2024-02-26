@@ -34,7 +34,7 @@ module full_pusher (
     output addr_t [3:0] [2:0] [3:0] raddr [1:0],
     //to/from scatterer
     output logic valid_out,
-    output particle_t particle_out [1:0]
+    output particle_t particle_out [1:0],
 
     //to/from UART
     input logic ui_valid,
@@ -48,17 +48,17 @@ module full_pusher (
     //each bram has two ports, so both pushers can read from the same bram at the same time
     bmag_t [3:0] [2:0] [3:0] bmag_out [1:0];
     generate
-        for (genvar i = 0; i < 3; i++) begin
-            for (genvar j = 0; j < 4; j++) begin
+        for (genvar i = 0; i < 4; i++) begin
+            for (genvar j = 0; j < 3; j++) begin
                 grid_mem #(.WIDTH(BWIDTH)) bmag_grid (
                     .clk(clk),
                     .rst(rst),
                     .swap_rout(1'b1),
-                    .wea(ui_valid ? 4'b1 : 4'b0),
+                    .wea(ui_valid ? {0, 0, 0, wen} : 4'b0),
                     .web(4'b0),
-                    .addra(raddr[0][i][j]),
+                    .addra(ui_valid ? {'0, '0, '0, addr_in} : raddr[0][i][j]),
                     .addrb(raddr[1][i][j]),
-                    .dina('0),
+                    .dina({'0, '0, '0, bmag_in}),
                     .dinb('0),
                     .douta(bmag_out[0][i][j]),
                     .doutb(bmag_out[1][i][j]),
@@ -69,6 +69,24 @@ module full_pusher (
         end
     endgenerate
 
+    addr_t [3:0] short_bmag_addr [1:0];
+    bmag_t [3:0] short_bmag [1:0];
+
+    
+    grid_mem #(.WIDTH(BWIDTH), .NO_RST(1)) bmag_grid (
+        .clk(clk),
+        .rst(rst),
+        .wea(ui_valid ? {0, 0, 0, wen} : 4'b0),
+        .web(4'b0),
+        .addra(ui_valid ? {'0, '0, '0, addr_in} : short_bmag_addr[0]),
+        .addrb(short_bmag_addr[1]),
+        .dina({'0, '0, '0, bmag_in}),
+        .dinb('0),
+        .douta(short_bmag[0]),
+        .doutb(short_bmag[1]),
+        .swapped_addra(),
+        .swapped_addrb()
+    );
 
     pusher pusher0 (
         .clk(clk),
@@ -80,9 +98,11 @@ module full_pusher (
         .valid_out(valid_out),
         .particle_out(particle_out[0]),
         .phi_in(phi_in[0]),
+        .short_bmag_in(short_bmag[0]),
         .bmag_in(bmag_out[0]),
         .valid_req(valid_req_out),
-        .raddr(raddr[0])
+        .raddr(raddr[0]),
+        .short_bmag_addr(short_bmag_addr[0])
     );
 
     
@@ -95,9 +115,11 @@ module full_pusher (
         .particle_in(particle_in[1]),
         .particle_out(particle_out[1]),
         .phi_in(phi_in[1]),
+        .short_bmag_in(short_bmag[1]),
         .bmag_in(bmag_out[1]),
         .valid_req(),
-        .raddr(raddr[1])
+        .raddr(raddr[1]),
+        .short_bmag_addr(short_bmag_addr[1])
     );
 
 

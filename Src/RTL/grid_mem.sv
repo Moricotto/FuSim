@@ -116,8 +116,8 @@ module grid_mem #(parameter WIDTH = 36, parameter NO_RST = 0) (
 
     always_comb begin
         for (int i = 0; i < 4; i++) begin
-            sela[i] = {addra[i][PINT], addra[i][0]};
-            selb[i] = {addrb[i][PINT], addrb[i][0]};
+            sela[i] = {addra[i].y[0], addra[i].x[0]};
+            selb[i] = {addrb[i].y[0], addrb[i].x[0]};
         end
     end
 
