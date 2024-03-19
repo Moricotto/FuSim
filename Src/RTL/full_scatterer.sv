@@ -23,11 +23,13 @@ module full_scatterer (
     input logic clk,
     input logic rst,
     input logic valid_scatter,
+    logic [31:0] num_particles,
     input particle_t particle_in [1:0],
     output logic done,
     input logic valid_req,
     input addr_t [3:0] grid_addr_in [1:0],
-    output charge_t [3:0] charge_out [1:0]
+    output logic charge_rdy,
+    output charge_t [3:0] charge_out [1:0],
 
     //to/from UART
     input logic ui_valid,
@@ -46,11 +48,11 @@ module full_scatterer (
         .clk(clk),
         .rst(rst),
         .swap_rout(1'b1),
-        .wea(ui_valid ? {0, 0, 0, wen} : 4'b0),
+        .wea(ui_valid ? {wen, 1'b0, 1'b0, 1'b0} : 4'b0),
         .web(4'b0),
-        .addra(ui_valid ? {'0, '0, '0, addr_in} : bmag_raddr[0]),
+        .addra(ui_valid ? {addr_in, 12'b0, 12'b0, 12'b0} : bmag_raddr[0]),
         .addrb(bmag_raddr[1]),
-        .dina({'0, '0, '0, bmag_in}),
+        .dina({bmag_in, 14'b0, 14'b0, 14'b0}),
         .dinb('0),
         .douta(bmag_out[0]),
         .doutb(bmag_out[1]),
@@ -62,12 +64,14 @@ module full_scatterer (
         .clk(clk),
         .rst(rst),
         .valid_scatter(valid_scatter),
+        .num_particles(num_particles),
         .particle_in(particle_in[0]),
         .bmag_in(bmag_out[0]),
         .bmag_raddr(bmag_raddr[0]),
         .done(done),
         .valid_req(valid_req),
         .grid_addr_in(grid_addr_in),
+        .charge_rdy(charge_rdy),
         .charge_out(charge[0])
     );
 
@@ -75,12 +79,14 @@ module full_scatterer (
         .clk(clk),
         .rst(rst),
         .valid_scatter(valid_scatter),
+        .num_particles(num_particles),
         .particle_in(particle_in[1]),
         .bmag_in(bmag_out[1]),
         .bmag_raddr(bmag_raddr[1]),
         .done(),
         .valid_req(valid_req),
         .grid_addr_in(grid_addr_in),
+        .charge_rdy(),    
         .charge_out(charge[1])
     );
 

@@ -95,11 +95,15 @@ module grid_mem #(parameter WIDTH = 36, parameter NO_RST = 0) (
                 BWIDTH: begin
                     bmag_bram bram (
                     .clka(clk),    // input wire clka
-                    .addra(true_addra[n]),  // input wire [11 : 0] addra
-                    .douta(swapped_douta[n]),  // output wire [13 : 0] douta
+                    .wea(wea_ff[n]),      // input wire [0 : 0] wea
+                    .addra(true_addra[n]),  // input wire [9 : 0] addra
+                    .dina(swapped_dina[n]),    // input wire [23 : 0] dina
+                    .douta(swapped_douta[n]),
                     .clkb(clk),    // input wire clkb
-                    .addrb(true_addrb[n]),  // input wire [11 : 0] addrb
-                    .doutb(swapped_doutb[n])  // output wire [13 : 0] doutb
+                    .web(web_ff[n]),      // input wire [0 : 0] web
+                    .addrb(true_addrb[n]),  // input wire [9 : 0] addrb
+                    .dinb(swapped_dinb[n]),    // input wire [23 : 0] dinb
+                    .doutb(swapped_doutb[n])  // output wire [23 : 0] doutb 
                     );
                 end
                 default: begin 
@@ -139,8 +143,10 @@ module grid_mem #(parameter WIDTH = 36, parameter NO_RST = 0) (
                 selb_ff[0][i] <= '0;
                 sela_ff[1][i] <= '0;
                 selb_ff[1][i] <= '0;
-                do_reseta[i] <= '0;
-                do_resetb[i] <= '0;
+                do_reseta[0][i] <= '0;
+                do_reseta[1][i] <= '0;
+                do_resetb[0][i] <= '0;
+                do_resetb[1][i] <= '0;
                 douta[i] <= '0;
                 doutb[i] <= '0;
             end

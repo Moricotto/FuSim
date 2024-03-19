@@ -28,6 +28,7 @@ module pusher (
     //to/from full_pusher
     input logic valid,
     input logic noop,
+    input logic [31:0] num_particles,
     input particle_t particle_in,
     output logic valid_out,
     output particle_t particle_out,
@@ -119,8 +120,8 @@ module pusher (
     logic signed [BWIDTH:0] drift_x_ff;
     logic [43:0] mu;
     logic [MUWIDTH-1:0] mu_ff [6:0];
-    logic signed [MUWIDTH+PWIDTH:0] gradb_vel_y;
-    logic signed [MUWIDTH+PWIDTH:0] gradb_vel_x;
+    logic signed [MUWIDTH+BWIDTH:0] gradb_vel_y;
+    logic signed [MUWIDTH+BWIDTH:0] gradb_vel_x;
     logic signed [PWIDTH:0] drift_vel_y;
     logic signed [PWIDTH:0] drift_vel_x;
     logic signed [EWIDTH+SLOWDOWN-1:0] exb_y;
@@ -149,7 +150,7 @@ module pusher (
     logic valid_mu;
     logic valid_wait [5:0];
     logic valid_mu_mult [4:0];
-    logic valid_gradb_vel [3:0];
+    logic valid_gradb_vel [4:0];
     logic valid_exb;
     logic valid_new_particle;
 
@@ -181,7 +182,7 @@ module pusher (
     gyroradius_div gyro_div (
         .aclk(clk),                                      // input wire aclk
         .s_axis_divisor_tvalid(valid_bmag),    // input wire s_axis_divisor_tvalid
-        .s_axis_divisor_tdata(bmag_ff),      // input wire [15 : 0] s_axis_divisor_tdata
+        .s_axis_divisor_tdata({2'b0, bmag_ff}),      // input wire [15 : 0] s_axis_divisor_tdata
         .s_axis_dividend_tvalid(valid_bmag),  // input wire s_axis_dividend_tvalid
         .s_axis_dividend_tuser(particle[0]),    // input wire [35 : 0] s_axis_dividend_tuser
         .s_axis_dividend_tdata(particle[0].vperp),    // input wire [15 : 0] s_axis_dividend_tdata
@@ -257,8 +258,8 @@ module pusher (
 
                 bmag_mult mult_bmag (
                     .CLK(clk),
-                    .A(bmag[i][j]),
-                    .B(coeff_ff[2][i][j]),
+                    .A(coeff_ff[2][i][j]),
+                    .B(bmag[i][j]),
                     .P(interpolated_bmag[i][j])
                 );
             end
@@ -281,7 +282,7 @@ module pusher (
     exb_div exb_div_y (
         .aclk(clk),                                      // input wire aclk
         .s_axis_divisor_tvalid(valid_true),    // input wire s_axis_divisor_tvalid
-        .s_axis_divisor_tdata($signed({1'b0, true_bmag})),      // input wire [15 : 0] s_axis_divisor_tdata
+        .s_axis_divisor_tdata($signed({2'b0, true_bmag})),      // input wire [15 : 0] s_axis_divisor_tdata
         .s_axis_dividend_tvalid(valid_true),  // input wire s_axis_dividend_tvalid
         .s_axis_dividend_tuser(particle[19]),
         .s_axis_dividend_tdata(true_efield_x),    // input wire [39 : 0] s_axis_dividend_tdata
@@ -293,7 +294,7 @@ module pusher (
     exb_div exb_div_x (
         .aclk(clk),                                      // input wire aclk
         .s_axis_divisor_tvalid(valid_true),    // input wire s_axis_divisor_tvalid
-        .s_axis_divisor_tdata($signed({1'b0, true_bmag})),      // input wire [15 : 0] s_axis_divisor_tdata
+        .s_axis_divisor_tdata($signed({2'b0, true_bmag})),      // input wire [15 : 0] s_axis_divisor_tdata
         .s_axis_dividend_tvalid(valid_true),  // input wire s_axis_dividend_tvalid
         .s_axis_dividend_tuser('0),
         .s_axis_dividend_tdata(-true_efield_y),    // input wire [39 : 0] s_axis_dividend_tdata
@@ -305,7 +306,7 @@ module pusher (
     drift_div drift_div_y (
         .aclk(clk),                                      // input wire aclk
         .s_axis_divisor_tvalid(valid_true),    // input wire s_axis_divisor_tvalid
-        .s_axis_divisor_tdata($signed({1'b0, true_bmag})),      // input wire [15 : 0] s_axis_divisor_tdata
+        .s_axis_divisor_tdata($signed({2'b0, true_bmag})),      // input wire [15 : 0] s_axis_divisor_tdata
         .s_axis_dividend_tvalid(valid_true),  // input wire s_axis_dividend_tvalid
         .s_axis_dividend_tdata(true_gradb_x),    // input wire [15 : 0] s_axis_dividend_tdata
         .m_axis_dout_tvalid(),          // output wire m_axis_dout_tvalid
@@ -315,7 +316,7 @@ module pusher (
     drift_div drift_div_x (
         .aclk(clk),                                      // input wire aclk
         .s_axis_divisor_tvalid(valid_true),    // input wire s_axis_divisor_tvalid
-        .s_axis_divisor_tdata($signed({1'b0, true_bmag})),      // input wire [15 : 0] s_axis_divisor_tdata
+        .s_axis_divisor_tdata($signed({2'b0, true_bmag})),      // input wire [15 : 0] s_axis_divisor_tdata
         .s_axis_dividend_tvalid(valid_true),  // input wire s_axis_dividend_tvalid
         .s_axis_dividend_tdata(-true_gradb_y),    // input wire [15 : 0] s_axis_dividend_tdata
         .m_axis_dout_tvalid(),          // output wire m_axis_dout_tvalid
@@ -325,9 +326,9 @@ module pusher (
     mu_div mu_maker (
         .aclk(clk),                                      // input wire aclk
         .s_axis_divisor_tvalid(valid_true),    // input wire s_axis_divisor_tvalid
-        .s_axis_divisor_tdata(true_bmag),      // input wire [15 : 0] s_axis_divisor_tdata
+        .s_axis_divisor_tdata({2'b0, true_bmag}),      // input wire [15 : 0] s_axis_divisor_tdata
         .s_axis_dividend_tvalid(valid_true),  // input wire s_axis_dividend_tvalid
-        .s_axis_dividend_tdata(vperp_squared_ff),    // input wire [31 : 0] s_axis_dividend_tdata
+        .s_axis_dividend_tdata({4'b0, vperp_squared_ff}),    // input wire [31 : 0] s_axis_dividend_tdata
         .m_axis_dout_tvalid(valid_mu),          // output wire m_axis_dout_tvalid
         .m_axis_dout_tdata(mu)            // output wire [47 : 0] m_axis_dout_tdata
     );
@@ -346,16 +347,17 @@ module pusher (
         .P(gradb_vel_x)
     );
 
-    assign done = cnt == NUM_PARTICLES - 1;
+    assign done = cnt == (num_particles - 1);
     
     always @(posedge clk) begin
         rst_ff <= rst;
         if (rst_ff) begin
             particle <= '{default:'0};
-            bmag_ff <= '0;
+            bmag_ff <= '1;
             gyroradius_ff <= '{default:'0};
-            gyropoints_y <= '{default:'0};
+            gyropoints_y <= '0;
             gyropoints_x <= '0;
+            raddr <= '{default:'0};
             dist_ff <= '{default:'0};  
             inv_dist_ff <= '{default:'0};
             special <= '{default:'0};
@@ -402,7 +404,7 @@ module pusher (
             true_efield_x <= '0;
             true_gradb_y <= '0;
             true_gradb_x <= '0;
-            true_bmag <= '0;
+            true_bmag <= '1;
             drift_y_ff <= '0;
             drift_x_ff <= '0;
             mu_ff <= '{default:'0};
@@ -411,6 +413,7 @@ module pusher (
             exb_y_ff <= '0;
             exb_x_ff <= '0;
             cnt <= '0;
+            particle_out <= '0;
 
             valid_bmag <= 1'b0;
             valid_gyroradius <= 1'b0;
@@ -452,8 +455,8 @@ module pusher (
             //calculate the four gyropoints
             if (valid_gyroradius) begin
                 for (int i = 0; i < 4; i++) begin
-                    gyropoints_y[i] <= particle[2].pos.y + (i[1] ? (i[0] ? gyroradius_ff : -gyroradius_ff) : 1'b0);
-                    gyropoints_x[i] <= particle[2].pos.x + (i[1] ? 1'b0 : (i[0] ? gyroradius_ff : -gyroradius_ff));
+                    gyropoints_y[i] <= particle[1].pos.y + (i[1] ? (i[0] ? gyroradius_ff : -gyroradius_ff) : 1'b0);
+                    gyropoints_x[i] <= particle[1].pos.x + (i[1] ? 1'b0 : (i[0] ? gyroradius_ff : -gyroradius_ff));
                 end
                 particle[2] <= particle[1];
                 valid_gyropoints <= 1'b1;
@@ -476,8 +479,10 @@ module pusher (
                     raddr[i][2][1] <= {gyropoints_y[i].whole - 1'b1, gyropoints_x[i].whole + 1'b1};
                     raddr[i][2][2] <= {gyropoints_y[i].whole + 2'b10, gyropoints_x[i].whole};
                     raddr[i][2][3] <= {gyropoints_y[i].whole + 2'b10, gyropoints_x[i].whole + 1'b1};
-                    dist_ff[0][i] <= {gyropoints_y[i].fraction, gyropoints_x[i].fraction};
-                    inv_dist_ff[0][i] <= {12'hfff - gyropoints_y[i].fraction + 1'b1, 12'hfff - gyropoints_x[i].fraction + 1'b1};
+                    dist_ff[0][i].y_frac <= gyropoints_y[i].fraction;
+                    dist_ff[0][i].x_frac <= gyropoints_x[i].fraction;
+                    inv_dist_ff[0][i].y_frac <= 12'hfff - gyropoints_y[i].fraction + 1'b1;
+                    inv_dist_ff[0][i].x_frac <= 12'hfff - gyropoints_x[i].fraction + 1'b1;
                 end
                 particle[3] <= particle[2];
                 valid_raddr <= 1'b1;
@@ -492,7 +497,7 @@ module pusher (
                 particle[4] <= particle[3];
                 valid_bram[0] <= 1'b1;
             end else begin
-                valid_bram[0] <= 1'b1;
+                valid_bram[0] <= 1'b0;
             end
 
             for (int i = 1; i < 4; i++) begin

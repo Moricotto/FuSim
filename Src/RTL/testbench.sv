@@ -23,53 +23,73 @@
 
 module testbench();
     import defs::*;
-    
-    logic clk;
-    logic rst;
-    logic calib_complete;
-    logic valid;
-    logic tlast;
-    particle_t particle_in [1:0];
-    logic [7:0] led;
 
+    logic clk_p;
+    logic clk_n;
+    logic rst;
+    logic rxd_i;
+    logic txd_o;
+    //dut
     plasma_sim dut (
-        .sys_clk_p(clk),
-        .sys_clk_n(~clk),   
-        .rst(rst),
-        .led(led),
-        .data_out()
+        .sys_clk_p(clk_p),
+        .sys_clk_n(clk_n),
+        .usr_rst(rst),
+        .rxd_i(rxd_i),
+        .txd_o(txd_o),
+        .data_out(),
+        .led()
     );
 
-   
-    //clock logic 
+    tb_uart_driver driver (
+        .data_out(rxd_i)
+    );
+
+    logic [7:0] char;
+    logic char_val;
+    tb_uart_monitor monitor (
+        .data_in(txd_o),
+        .char(char),
+        .char_val(char_val)
+    );
+
+    logic [8*15-1:0] particle0_write = "*p4000200002000";
+    logic [8*15-1:0] particle1_write = "*p2000100002800";
+    logic [8*9-1:0] bmag_write = "*m000ffff";
+    logic [8*10-1:0] go = "*g00000004";
+    logic [8*6-1:0] charge_read = "*c202";
+    logic [8*6-1:0] phi_read = "*e202";
+    defparam dut.uart_ctl.BAUD_RATE = 9_600;  //6_250_000
     initial begin
-        clk = 1;
-        forever #5 clk = ~clk;
-    end 
-    
-    initial begin
-        rst = 1'b0;
-        calib_complete = 1'b0;
-        valid = 1'b0;
-        tlast = 1'b0;
-        particle_in[0] = {18'h0fe3d, 18'h036ad, 14'h0c1f};
-        particle_in[1] = {18'h0d24a, 18'h023a6, 14'h0a2e};
-        @(posedge clk) rst = 1;
-        @(posedge clk);
-        @(posedge clk) rst = 0;
-        @(posedge clk);
-        @(posedge clk);
-        calib_complete = 1'b1;
-        @(posedge clk);
-        valid = 1'b1;
-        forever begin
-            tlast = 1'b0;
-            for (int i = 0; i < 500; i++) begin
-                @(posedge clk);
-            end
-            tlast = 1'b1;
-            @(posedge clk);
+        $display("Starting testbench");
+        clk_p <= 1'b0;
+        rst <= 1'b0;
+        #600;
+        $display("Sending first message");
+        for (int i = 14; i >= 0; i--) begin
+            driver.send_char(particle0_write[i*8+:8]);
         end
+        for (int i = 14; i >= 0; i--) begin
+            driver.send_char(particle1_write[i*8+:8]);
+        end
+        for (int i = 8; i >= 0; i--) begin
+            driver.send_char(bmag_write[i*8+:8]);
+        end
+        for (int i = 9; i >= 0; i--) begin
+            driver.send_char(go[i*8+:8]);
+        end
+        #5000ns
+        for (int i = 5; i >= 0; i--) begin
+            driver.send_char(charge_read[i*8+:8]);
+        end
+        #50ns
+        for (int i = 5; i >= 0; i--) begin
+            driver.send_char(phi_read[i*8+:8]);
+        end
+    end
+    assign clk_n = ~clk_p;
+    always begin
+        #2.5ns;
+        clk_p <= ~clk_p;
     end
 
 endmodule

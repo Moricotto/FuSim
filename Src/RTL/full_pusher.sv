@@ -23,6 +23,7 @@
 module full_pusher (
     input logic clk,    
     input logic rst,
+    input logic [31:0] num_particles,
     //to/from top level module
     input logic valid,
     input logic noop, 
@@ -50,15 +51,15 @@ module full_pusher (
     generate
         for (genvar i = 0; i < 4; i++) begin
             for (genvar j = 0; j < 3; j++) begin
-                grid_mem #(.WIDTH(BWIDTH)) bmag_grid (
+                grid_mem #(.WIDTH(BWIDTH), .NO_RST(1)) bmag_grid (
                     .clk(clk),
                     .rst(rst),
                     .swap_rout(1'b1),
-                    .wea(ui_valid ? {0, 0, 0, wen} : 4'b0),
+                    .wea(ui_valid ? {1'b0, 1'b0, 1'b0, wen} : 4'b0),
                     .web(4'b0),
-                    .addra(ui_valid ? {'0, '0, '0, addr_in} : raddr[0][i][j]),
+                    .addra(ui_valid ? {12'b0, 12'b0, 12'b0, addr_in} : raddr[0][i][j]),
                     .addrb(raddr[1][i][j]),
-                    .dina({'0, '0, '0, bmag_in}),
+                    .dina({14'b0, 14'b0, 14'b0, bmag_in}),
                     .dinb('0),
                     .douta(bmag_out[0][i][j]),
                     .doutb(bmag_out[1][i][j]),
@@ -76,11 +77,12 @@ module full_pusher (
     grid_mem #(.WIDTH(BWIDTH), .NO_RST(1)) bmag_grid (
         .clk(clk),
         .rst(rst),
-        .wea(ui_valid ? {0, 0, 0, wen} : 4'b0),
+        .swap_rout(1'b1),
+        .wea(ui_valid ? {1'b0, 1'b0, 1'b0, wen} : 4'b0),
         .web(4'b0),
-        .addra(ui_valid ? {'0, '0, '0, addr_in} : short_bmag_addr[0]),
+        .addra(ui_valid ? {12'b0, 12'b0, 12'b0, addr_in} : short_bmag_addr[0]),
         .addrb(short_bmag_addr[1]),
-        .dina({'0, '0, '0, bmag_in}),
+        .dina({14'b0, 14'b0, 14'b0, bmag_in}),
         .dinb('0),
         .douta(short_bmag[0]),
         .doutb(short_bmag[1]),
@@ -94,6 +96,7 @@ module full_pusher (
         .valid(valid),
         .noop(noop),
         .done(done),
+        .num_particles(num_particles),
         .particle_in(particle_in[0]),
         .valid_out(valid_out),
         .particle_out(particle_out[0]),
@@ -112,6 +115,7 @@ module full_pusher (
         .valid(valid),
         .noop(noop),
         .done(),
+        .num_particles(num_particles),
         .particle_in(particle_in[1]),
         .particle_out(particle_out[1]),
         .phi_in(phi_in[1]),

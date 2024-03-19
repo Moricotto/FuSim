@@ -27,7 +27,9 @@ module controller (
     input logic scatter_done,
     input logic pusher_done,
     input logic solver_done,
-    output logic [31:0] cnt,
+    input logic [31:0] num_steps_in,
+    output logic [31:0] cnt_out,
+    output logic ui_valid,
     output logic fifo_ready,
     output logic start_solve,
     output logic first,
@@ -39,13 +41,17 @@ module controller (
     typedef enum {
         UI,
         SOLVE,
+        RST_SOLVE,
         PUSH_SCATTER,
         SCATTER
     } state_t;
 
     state_t state;
-    //logic [31:0] num_steps;
+    logic [31:0] num_steps;
     logic [31:0] cnt;
+
+    assign cnt_out = cnt;
+    assign num_steps = num_steps_in;
 
     always_ff @(posedge clk) begin
         if (rst) begin
@@ -55,6 +61,7 @@ module controller (
             rst_pusher <= 1'b1;
             rst_solver <= 1'b1;
             cnt <= '0;
+            ui_valid <= 1'b1;
             fifo_ready <= 1'b0;
             first <= 1'b1;
             start_solve <= 1'b0;
@@ -66,6 +73,7 @@ module controller (
                     rst_solver <= 1'b0;
                     if (ui_done) begin
                         state <= PUSH_SCATTER;
+                        ui_valid <= 1'b0;
                         first <= 1'b1;
                         fifo_ready <= 1'b1;
                     end
@@ -77,23 +85,31 @@ module controller (
                         fifo_ready <= 1'b0;
                         first <= 1'b0;
                         cnt <= cnt + 1;
-                        rst_solver <= 1'b1;
                         rst_pusher  <= 1'b1;
                     end
                 end
                 SCATTER: begin
-                    rst_solver <= 1'b0;
+                    if (cnt == num_steps) begin
+                        state <= UI;
+                        ui_valid <= 1'b1;
+                    end
                     rst_pusher <= 1'b0;
                     if (scatter_done) begin
-                        state <= SOLVE;
-                        start_solve <= 1'b1;
+                        state <= RST_SOLVE;
+                        rst_solver <= 1'b1;
                     end
                 end
+                RST_SOLVE: begin
+                    state <= SOLVE;
+                    rst_solver <= 1'b0;
+                    start_solve <= 1'b1;
+                end
                 SOLVE: begin
+                    start_solve <= 1'b0;
                     if (solver_done) begin
                         state <= PUSH_SCATTER;
-                        start_solve <= 1'b0;
                         rst_scatterer <= 1'b1;
+                        fifo_ready <= 1'b1;
                     end
                 end
             endcase

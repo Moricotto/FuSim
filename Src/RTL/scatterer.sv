@@ -23,6 +23,7 @@ import defs::*;
 module scatterer (
     input logic clk,
     input logic rst,
+    input logic [31:0] num_particles,
     //from pusher
     input logic valid_scatter,
     input particle_t particle_in,
@@ -32,6 +33,7 @@ module scatterer (
     //from solver
     input logic valid_req,
     input addr_t [3:0] grid_addr_in [1:0],
+    output logic charge_rdy,
     output charge_t [3:0] charge_out [1:0]
     );
 
@@ -105,10 +107,10 @@ module scatterer (
     gyroradius_div divider (
         .aclk(clk),                                      // input wire aclk
         .s_axis_divisor_tvalid(valid_bmag),    // input wire s_axis_divisor_tvalid
-        .s_axis_divisor_tdata(bmag_ff),      // input wire [15 : 0] s_axis_divisor_tdata
+        .s_axis_divisor_tdata({2'b0, bmag_ff}),      // input wire [15 : 0] s_axis_divisor_tdata
         .s_axis_dividend_tvalid(valid_bmag),  // input wire s_axis_dividend_tvalid
         .s_axis_dividend_tuser(particle_ff),    // input wire [11 : 0] s_axis_dividend_tuser
-        .s_axis_dividend_tdata(particle_ff.vperp),    // input wire [15 : 0] s_axis_dividend_tdata
+        .s_axis_dividend_tdata({2'b0, particle_ff.vperp}),    // input wire [15 : 0] s_axis_dividend_tdata
         .m_axis_dout_tvalid(valid_div),          // output wire m_axis_dout_tvalid
         .m_axis_dout_tuser(div_user_out),
         .m_axis_dout_tdata(divider_out)            // output wire [23 : 0] m_axis_dout_tdata
@@ -173,7 +175,7 @@ module scatterer (
             for (int i = 0; i < 8; i++) begin
                 valid_accum[i] <= 1'b0;
             end
-            done_ff <= '{default:'0};
+            done_ff <= '{default:1'b0};
             //for solve step
             requested_addra <= '0;
             requested_addrb <= '0;
@@ -225,7 +227,7 @@ module scatterer (
                 valid_gyropoint <= 1'b0;
             end
 
-            done_ff[0] <= cnt == NUM_PARTICLES - 1;
+            done_ff[0] <= cnt == (num_particles - 1);
             done_ff[1] <= done_ff[0];
             done_ff[2] <= done_ff[1];
             done_ff[3] <= done_ff[2];
@@ -278,7 +280,10 @@ module scatterer (
                 for (int i = 0; i < 4; i++) begin
                     charge_out[0][i] <= half_chargea[0][i] + half_chargea[1][i];
                     charge_out[1][i] <= half_chargeb[0][i] + half_chargeb[1][i];
-                end 
+                end
+                charge_rdy <= 1'b1; 
+            end else begin
+                charge_rdy <= 1'b0;
             end
         end
     end

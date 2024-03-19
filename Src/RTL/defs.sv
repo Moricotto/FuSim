@@ -55,6 +55,7 @@ package defs;
         logic [CFRAC-1:0] fraction;
     } charge_t;
 
+    parameter ADDRWIDTH = PINT*2;
     typedef struct packed {
         logic [PINT-1:0] y;
         logic [PINT-1:0] x;
@@ -63,7 +64,7 @@ package defs;
     typedef logic [PFRAC*2-1:0] coeff_t;
 
     typedef struct packed signed {
-        logic [3:0] whole;
+        logic [4:0] whole;
         logic [19:0] fraction;
     } const_t;
     // Grid precision parameters
@@ -115,7 +116,7 @@ package defs;
     } particle_t;
 
     parameter PSIZE = $bits(particle_t);
-    parameter NUM_PARTICLES = 16384;
+    parameter NUM_PARTICLES = 2;//16384;
 
     //distances from particle to gridpoints
     typedef struct packed {

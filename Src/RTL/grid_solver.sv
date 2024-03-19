@@ -72,7 +72,7 @@ module grid_solver (
     logic signed [CINT+PHIFRAC:0] true_phi_ff; //we add one bit because unlike charge, phi is signed
     logic signed [CINT+PHIFRAC:0] charge_ff;
     logic signed [CINT+PHIFRAC:0] diff_ff;
-    logic signed [CINT+PHIFRAC+24:0] new_phi;
+    logic signed [CINT+PHIFRAC+25:0] new_phi;
 
 
 
@@ -170,6 +170,7 @@ module grid_solver (
     always_ff @(posedge clk) begin
         rst_ff <= rst;
         if (rst_ff) begin
+            gyro_addr <= '0;
             addr <= '{default: '0};
             gyroradius_ff <= '0;
             four_point_gyropoints_y <= '0;
@@ -183,10 +184,13 @@ module grid_solver (
             four_point_sum_ff <= '0;
             two_point_sum_ff <= '0;
             total_phi_ff <= '0;
+            charge_addr <= '0;
             weighted_phi_ff <= '0;
             true_phi_ff <= '0;
             charge_ff <= '0;
             diff_ff <= '0;
+            waddr_out <= '0;
+            phi_out <= '0;
 
             //valids
             valid_addr <= 1'b0;
@@ -353,7 +357,7 @@ module grid_solver (
             end
 
             if (valid_mult[4]) begin
-                phi_out <= {new_phi[CINT+PHIFRAC+24-:PHIINT], new_phi[46-:PHIFRAC]};
+                phi_out <= {new_phi[CINT+PHIFRAC+25-:PHIINT], new_phi[46-:PHIFRAC]};
                 waddr_out <= addr[21];
                 valid_out <= 1'b1;
             end else begin

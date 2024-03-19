@@ -123,8 +123,10 @@ module accumulator (
         end else begin
             //stage 1
             if (valid_in) begin
-                dist_ff[0] <= {gyropoint.y.fraction, gyropoint.x.fraction};
-                inv_dist_ff[0] <= {12'hfff - gyropoint.y.fraction + 1, 12'hfff - gyropoint.x.fraction + 1};
+                dist_ff[0].y_frac <= gyropoint.y.fraction;
+                dist_ff[0].x_frac <= gyropoint.x.fraction;
+                inv_dist_ff[0].y_frac <= 12'hfff - gyropoint.y.fraction + 1'b1;
+                inv_dist_ff[0].x_frac <= 12'hfff - gyropoint.x.fraction + 1'b1;
                 for (int i = 0; i < 4; i++) begin
                     addr[0][i] <= {gyropoint.y.whole + i[1], gyropoint.x.whole + i[0]};
                 end
@@ -144,6 +146,7 @@ module accumulator (
 
             if (valid_mult0) begin
                 dist_ff[2] <= dist_ff[1];
+                inv_dist_ff[2] <= inv_dist_ff[1];
                 valid_mult1 <= 1'b1;
             end else begin
                 valid_mult1 <= 1'b0;
@@ -151,6 +154,7 @@ module accumulator (
 
             if (valid_mult1) begin
                 dist_ff[3] <= dist_ff[2];
+                inv_dist_ff[3] <= inv_dist_ff[2];
                 valid_mult2 <= 1'b1;
             end else begin
                 valid_mult2 <= 1'b0;
@@ -197,17 +201,14 @@ module accumulator (
 
             if (valid_stored_charge) begin
                 for (int i = 0; i < 4; i++) begin
-                    if (addend_sel[i][2] && addend_sel[i][0]) begin
-                        new_charge_ff[i] <= stored_charge_ff[i] + charge_coeff_ff[i];
-                    end else begin
-                        unique case (addend_sel)
+                    unique case (addend_sel)
                             3'b000: new_charge_ff[i] <= new_charge_ff[i] + charge_coeff_ff[i];
                             3'b001: new_charge_ff[i] <= post_charge_ff[i] + charge_coeff_ff[i];
                             3'b010: new_charge_ff[i] <= post_post_charge_ff[i] + charge_coeff_ff[i];
                             3'b011: new_charge_ff[i] <= post_post_post_charge_ff[i] + charge_coeff_ff[i];
                             3'b100: new_charge_ff[i] <= post_post_post_post_charge_ff[i] + charge_coeff_ff[i];
-                        endcase
-                    end
+                            3'b101: new_charge_ff[i] <= stored_charge_ff[i] + charge_coeff_ff[i];
+                    endcase
                     addr[1][i] <= addr[0][i];
                 end
                 valid_new_charge <= 1'b1;
