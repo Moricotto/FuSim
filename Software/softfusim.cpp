@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
                     for (unsigned int y = 0; y < GRIDY; y++) {
                         for (unsigned int x = 0; x < GRIDX; x++) {
                             Pair<Phi> grad_phi = phi_out.grad(y, x);
-                            fprintf(file, "%d,%d,", grad_phi.y.value, grad_phi.x.value);
+                            fprintf(file, "%.lld,%.lld,", grad_phi.y.value, grad_phi.x.value);
                         }
                     }
                     fclose(file);

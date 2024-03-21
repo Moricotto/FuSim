@@ -45,7 +45,7 @@ public:
     void write(std::string filename) {
         FILE * file = fopen(filename.c_str(), "w");
         for (unsigned int i = 0; i < GRID_SIZE; i++) {
-            fprintf(file, "%d,", data[i].value);
+            fprintf(file, "%.llu,", data[i].value);
         }
         fclose(file);
     }
@@ -154,9 +154,9 @@ public:
     void write(std::string filename) {
         FILE * file = fopen(filename.c_str(), "w");
         for (unsigned int i = 0; i < GRID_SIZE; i++) {
-            fprintf(file, "%d,", data[i].value);
+            fprintf(file, "%.lld,", data[i].value);
         }
-        fclose(file)
+        fclose(file);
     }
 
     Pair<T> grad(int y, int x) const {

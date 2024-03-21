@@ -4,7 +4,7 @@
 CXX := g++
 
 # Compiler flags
-CXXFLAGS := -std=c++20 -Wall -Wextra -march=native -O3 -DDEBUG
+CXXFLAGS := -std=c++20 -Wall -Wextra -march=native -O3
 LDFLAGS := 
 
 # Source files
