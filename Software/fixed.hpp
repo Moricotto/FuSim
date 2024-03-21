@@ -407,7 +407,7 @@ public:
         #endif
     }
 
-    Signed<I + 1, F> operator-(const Signed<I, F>& rhs) {
+    Signed<I + 1, F> operator-(const Signed<I, F>& rhs) const {
         #ifdef USE_FP
         using next_size = typename type_from_size<roundToNeareastIntSize(I + F + 2)>::stype;
         #ifdef DEBUG

@@ -27,9 +27,6 @@ $(TARGET): $(OBJS)
 log.o: log.cpp log.hpp
 	$(CXX) $(CXXFLAGS) -c log.cpp -o $@
 
-filewriter.o: filewriter.cpp global.hpp fixed.hpp grid.hpp
-	$(CXX) $(CXXFLAGS) -c filewriter.cpp -o $@
-
 scatterer.o: scatterer.cpp global.hpp fixed.hpp grid.hpp
 	$(CXX) $(CXXFLAGS) -c scatterer.cpp -o $@
 

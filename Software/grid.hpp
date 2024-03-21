@@ -4,15 +4,6 @@
 #include "global.hpp"
 
 template <typename T>
-T div4(T value) {
-    #ifdef USE_FP
-    return value >> 2;
-    #else
-    return value / 4;
-    #endif // USE_FP
-}
-
-template <typename T>
 class UGrid {
 public:
     UGrid(T min = T{0.f}) : min(min) {
@@ -49,6 +40,14 @@ public:
         for (unsigned int i = 0; i < GRID_SIZE; i++) {
             data[i] = value;
         }
+    }
+
+    void write(std::string filename) {
+        FILE * file = fopen(filename.c_str(), "w");
+        for (unsigned int i = 0; i < GRID_SIZE; i++) {
+            fprintf(file, "%d,", data[i].value);
+        }
+        fclose(file);
     }
     
     //TODO: if T is Unsigned, return Unsigned, if T is signed return Signed
@@ -150,6 +149,20 @@ public:
         for (unsigned int i = 0; i < GRID_SIZE; i++) {
             data[i] = value;
         }
+    }
+
+    void write(std::string filename) {
+        FILE * file = fopen(filename.c_str(), "w");
+        for (unsigned int i = 0; i < GRID_SIZE; i++) {
+            fprintf(file, "%d,", data[i].value);
+        }
+        fclose(file)
+    }
+
+    Pair<T> grad(int y, int x) const {
+        T dy = static_cast<T>(((*this)(y + 1, x) - (*this)(y - 1, x)) >> 1);
+        T dx = static_cast<T>(((*this)(y, x + 1) - (*this)(y, x - 1)) >> 1);
+        return Pair<T>{dy, dx};
     }
 
     Signed<T::integer, T::fraction + Pos::fraction * 2> gather(Pos y, Pos x) const {

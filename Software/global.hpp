@@ -9,6 +9,7 @@
 #include <vector>
 #include <cmath>
 #include <array>
+#include <stdio.h>
 #include "fixed.hpp"
 
 constexpr unsigned int GRIDX = 64;

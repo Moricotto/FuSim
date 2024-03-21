@@ -3,46 +3,44 @@
 #include "scatterer.hpp"
 #include "solver.hpp"
 #include "pusher.hpp"
-#include <fstream>
 #include <random>
 #include <cmath>
 #include <algorithm>
 #include <chrono>
-//#include "filewriter.hpp"
 // =======================================
 // This is the software implementation of the exact same algorithm as the hardware implementation contained in this folder.
 // The goal is for the global details as well as some of the implementation details to be the same.
 // This will allow for a fair and rigourous comparison between the two implementations, while allowing me to use the software impplmementation to verify the hardware implementation.
 // =======================================
 
-template <typename T>
-void writeToFileU(const UGrid<T>& grid, std::string filename) {
-    std::ofstream file;
-    file.open(filename, std::ofstream::out | std::ofstream::trunc);
-    file << "unsigned" << std::endl << T::integer << std::endl << T::fraction << std::endl;
-    for (unsigned int i = 0; i < GRID_SIZE; i++) {
-        file << grid[i].value;
-        if (i != GRID_SIZE - 1) file << ",";
-    }
-    file.close();
-}
-
-template <typename T>
-void writeToFileS(const SGrid<T>& grid, std::string filename) {
-    std::ofstream file;
-    file.open(filename, std::ofstream::out | std::ofstream::trunc);
-    file << "signed" << std::endl << T::integer << std::endl << T::fraction << std::endl;
-    for (unsigned int i = 0; i < GRID_SIZE; i++) {
-        file << grid[i].value;
-        if (i != GRID_SIZE - 1) file << ",";
-    }
-    file.close();
-}
-
-int main() {
+int main(int argc, char* argv[]) {
     #ifdef DEBUG
     std::cout << "DEBUG MODE" << std::endl;
     #endif // DEBUG
+    bool write_bmag = true;
+    bool write_gyroradii = false;
+    bool write_rho = true;
+    bool write_phi = false;
+    bool write_efield = true;
+    bool gen_commands = false;
+    bool run = true;
+    for (int i = 1; i < argc; i++) {
+        if (std::string(argv[i]) == "-no-bmag") {
+            write_bmag = false;
+        } else if (std::string(argv[i]) == "-gyroradii") {
+            write_gyroradii = true;
+        } else if (std::string(argv[i]) == "-no-rho") {
+            write_rho = false;
+        } else if (std::string(argv[i]) == "-phi") {
+            write_phi = true;
+        } else if (std::string(argv[i]) == "-no-efield") {
+            write_efield = false;
+        } else if (std::string(argv[i]) == "-gen-commands") {
+            gen_commands = true;
+        } else if (std::string(argv[i]) == "-no-run") {
+            run = false;
+        }
+    }
     //initialize the grid of magnetic field values and gyroradii
     UGrid<Bmag> bmag{Bmag{1.f}};
     bmag.setAll(Bmag{1.f});
@@ -60,11 +58,14 @@ int main() {
     //delete all files  in data/
     system("rm data/*");
     //write bmag to file
-    writeToFileU(bmag, "data/bmag.txt");
+    if (write_bmag) bmag.write("data/bmag.txt");
     //write gyroradii to file
-    for (unsigned int v = 0; v < NUM_VPERP; v++) {
-        writeToFileU(gyroradii[v], "data/gyroradii" + std::to_string(v) + ".txt");
+    if (write_gyroradii) {
+        for (unsigned int v = 0; v < NUM_VPERP; v++) {
+            gyroradii[v].write("data/gyroradii" + std::to_string(v) + ".txt");
+        }
     }
+
     Particles particles;
     /*
     //initialise the particle positions and velocities
@@ -96,30 +97,54 @@ int main() {
         double v = std::clamp(vel_distribution(generator), 0.0, 4.0);
         particles[i].vperp = Vel{v};
 
-    }//*/
-    //calculate charge density
-    //particles[0] = Particle{Pos{32.f}, Pos{32.f}, Vel{0.f}};
-    UGrid<Charge> rho;
-    SGrid<Phi> phi_in = SGrid<Phi>{}; //initial guess for phi
-    SGrid<Phi> phi_out;
-    bool first = true;
-    auto start_time = std::chrono::high_resolution_clock::now();
-    for (unsigned int t = 0; t < NUM_TIMESTEPS; t++) {
-        rho.setAll(Charge{0.f});
-        scatter(particles, rho, bmag);
-        //write rho to file
-        phi_out = solve(phi_in, gyroradii, rho, first ? NUM_ITERATIONS_F : NUM_ITERATIONS);
-        //write phi to file
-        push(particles, bmag, phi_out);
-        if (t % DIAGNOSTIC_INTERVAL == 0) {
-            writeToFileU(rho, "data/rho" + std::to_string(t / DIAGNOSTIC_INTERVAL) + ".txt");
-            writeToFileS(phi_out, "data/phi" + std::to_string(t / DIAGNOSTIC_INTERVAL) + ".txt");
-        }
-        phi_in = phi_out;
-        first = false;
     }
-    auto stop_time = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time);
-    std::cout << "Time taken: " << duration.count() << " microseconds" << std::endl;
+
+    if (gen_commands) {
+        //write the set of commands that will recreate the current configuration in the FPGA to a file
+        FILE* file = fopen("commands.txt", "w");
+        for (Particle& particle: particles) {
+            fprintf(file, "*p%05x%08x\n", particle.y.value, (particle.x.value << Vel::bits) + particle.vperp.value);
+        }
+        for (unsigned int i = 0; i < GRID_SIZE; i++) {
+            fprintf(file, "*m%03x%04x\n", i, bmag[i].value);
+        }
+        fprintf(file, "*g%08x\n", NUM_TIMESTEPS);
+        fclose(file);
+    }
+    //*/
+    if (run) {
+        UGrid<Charge> rho;
+        SGrid<Phi> phi_in = SGrid<Phi>{}; //initial guess for phi
+        SGrid<Phi> phi_out;
+        bool first = true;
+        auto start_time = std::chrono::high_resolution_clock::now();
+        for (unsigned int t = 0; t < NUM_TIMESTEPS; t++) {
+            rho.setAll(Charge{0.f});
+            scatter(particles, rho, bmag);
+            phi_out = solve(phi_in, gyroradii, rho, first ? NUM_ITERATIONS_F : NUM_ITERATIONS);
+            //write phi to file
+            push(particles, bmag, phi_out);
+            if (t % DIAGNOSTIC_INTERVAL == 0) {
+                if (write_rho) rho.write("data/rho" + std::to_string(t / DIAGNOSTIC_INTERVAL) + ".txt");
+                if (write_phi) phi_out.write("data/phi" + std::to_string(t / DIAGNOSTIC_INTERVAL) + ".txt");
+                if (write_efield) {
+                    FILE * file = fopen(("data/efield" + std::to_string(t / DIAGNOSTIC_INTERVAL) + ".txt").c_str(), "w");
+                    //calculate efield at every gridpoint
+                    for (unsigned int y = 0; y < GRIDY; y++) {
+                        for (unsigned int x = 0; x < GRIDX; x++) {
+                            Pair<Phi> grad_phi = phi_out.grad(y, x);
+                            fprintf(file, "%d,%d,", grad_phi.y.value, grad_phi.x.value);
+                        }
+                    }
+                    fclose(file);
+                }
+            }
+            phi_in = phi_out;
+            first = false;
+        }
+        auto stop_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time);
+        std::cout << "Time taken: " << duration.count() << " microseconds" << std::endl;
+    }
     return 0;
 }
